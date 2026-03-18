@@ -1,0 +1,43 @@
+# Dependencies
+**/node_modules/
+
+# Next.js
+web/.next/
+web/out/
+web/public/sw.js
+web/public/workbox-*.js
+web/public/worker-*.js
+web/public/sw.js.map
+web/public/workbox-*.js.map
+
+# Environment files
+.env
+.env.local
+web/.env.local
+**/.env.local
+
+# .NET build output
+**/bin/
+**/obj/
+
+# .NET user secrets
+**/appsettings.*.json
+!**/appsettings.Development.json
+!**/appsettings.Production.json
+
+# Rider / Visual Studio
+.vs/
+.idea/
+*.user
+*.suo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# EF migrations — keep these in source control
+# (do NOT add Migrations/ here)
