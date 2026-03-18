@@ -6,14 +6,16 @@ public record RecipeListItem(
     Guid Id, string Name, string Type,
     string? SourceUrl, string? Description,
     int? Servings, int? PrepTimeMins, int? CookTimeMins,
-    string? ImageUrl, DateTime CreatedAt);
+    string? ImageUrl, DateTime CreatedAt,
+    Guid? CreatedByUserId, string? CreatedByName);
 
 public record RecipeDetail(
     Guid Id, string Name, string Type,
     string? SourceUrl, string? Description,
     int? Servings, int? PrepTimeMins, int? CookTimeMins,
     List<IngredientItem>? Ingredients, List<StepItem>? Steps,
-    string? ImageUrl, DateTime CreatedAt, DateTime UpdatedAt);
+    string? ImageUrl, DateTime CreatedAt, DateTime UpdatedAt,
+    Guid? CreatedByUserId, string? CreatedByName);
 
 public record CreateRecipeRequest(
     string Name, string Type,

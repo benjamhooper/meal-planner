@@ -15,9 +15,11 @@ public class Recipe
     public List<IngredientItem>? Ingredients { get; set; }
     public List<StepItem>? Steps { get; set; }
     public string? ImageUrl { get; set; }
+    public Guid? CreatedByUserId { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
+    public User? CreatedBy { get; set; }
     public ICollection<MealPlanSlot> MealPlanSlots { get; set; } = new List<MealPlanSlot>();
 }
 

@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using MealPlanner.Api.Data;
 using MealPlanner.Api.DTOs;
 using MealPlanner.Api.Models;
+using MealPlanner.Api.Services;
 
 namespace MealPlanner.Api.Controllers;
 
@@ -60,7 +61,8 @@ public class MealPlanController(AppDbContext db) : ControllerBase
         var slot = new MealPlanSlot
         {
             MealPlanWeekId = week.Id, DayOfWeek = req.DayOfWeek, MealType = req.MealType,
-            RecipeId = req.RecipeId, CustomLabel = req.CustomLabel, Notes = req.Notes
+            RecipeId = req.RecipeId, CustomLabel = req.CustomLabel, Notes = req.Notes,
+            CreatedByUserId = AuthService.GetCurrentUserId(User)
         };
         db.MealPlanSlots.Add(slot);
         await db.SaveChangesAsync();

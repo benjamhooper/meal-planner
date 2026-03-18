@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using MealPlanner.Api.Data;
 using MealPlanner.Api.DTOs;
 using MealPlanner.Api.Models;
+using MealPlanner.Api.Services;
 
 namespace MealPlanner.Api.Controllers;
 
@@ -40,13 +41,15 @@ public class GroceryController(AppDbContext db) : ControllerBase
     {
         var list = await db.GroceryLists.FindAsync(id);
         if (list == null) return NotFound();
+        var userId = AuthService.GetCurrentUserId(User);
         var maxOrder = await db.GroceryItems.Where(i => i.GroceryListId == id)
             .Select(i => (int?)i.SortOrder).MaxAsync() ?? -1;
         var item = new GroceryItem
         {
             GroceryListId = id, Name = req.Name,
             Quantity = req.Quantity, Category = req.Category,
-            SortOrder = maxOrder + 1
+            SortOrder = maxOrder + 1,
+            CreatedByUserId = userId
         };
         db.GroceryItems.Add(item);
         list.UpdatedAt = DateTime.UtcNow;

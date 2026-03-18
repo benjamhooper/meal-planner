@@ -9,9 +9,11 @@ public class MealPlanSlot
     public Guid? RecipeId { get; set; }
     public string? CustomLabel { get; set; }
     public string? Notes { get; set; }
+    public Guid? CreatedByUserId { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
     public MealPlanWeek Week { get; set; } = null!;
     public Recipe? Recipe { get; set; }
+    public User? CreatedBy { get; set; }
 }

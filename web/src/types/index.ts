@@ -1,3 +1,11 @@
+export interface User {
+  id: string;
+  email: string;
+  name: string;
+  avatarUrl?: string;
+  provider: string;
+}
+
 export interface Recipe {
   id: string;
   name: string;
@@ -12,6 +20,8 @@ export interface Recipe {
   imageUrl?: string;
   createdAt: string;
   updatedAt?: string;
+  createdByUserId?: string;
+  createdByName?: string;
 }
 
 export interface IngredientItem {

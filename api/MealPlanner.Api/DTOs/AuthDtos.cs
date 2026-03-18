@@ -1,7 +1,3 @@
-using System.ComponentModel.DataAnnotations;
-
 namespace MealPlanner.Api.DTOs;
 
-public record LoginRequest([Required] string Password);
-public record SetupRequest([Required] string Password);
-public record AuthMeResponse(bool Authenticated);
+public record AuthMeResponse(Guid Id, string Email, string Name, string? AvatarUrl, string Provider);

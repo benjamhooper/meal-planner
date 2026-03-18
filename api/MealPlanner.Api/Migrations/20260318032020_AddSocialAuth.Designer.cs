@@ -5,6 +5,7 @@ using MealPlanner.Api.Data;
 using MealPlanner.Api.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -13,9 +14,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace MealPlanner.Api.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260318032020_AddSocialAuth")]
+    partial class AddSocialAuth
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -242,27 +245,6 @@ namespace MealPlanner.Api.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Email")
-                        .IsUnique();
-
-                    b.ToTable("users", (string)null);
-                });
-
-            modelBuilder.Entity("MealPlanner.Api.Models.UserIdentity", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasDefaultValueSql("gen_random_uuid()");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
                     b.Property<string>("Provider")
                         .IsRequired()
                         .HasColumnType("text");
@@ -271,17 +253,15 @@ namespace MealPlanner.Api.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uuid");
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("UserId");
 
                     b.HasIndex("Provider", "ProviderUserId")
                         .IsUnique();
 
-                    b.ToTable("user_identities", (string)null);
+                    b.ToTable("users", (string)null);
                 });
 
             modelBuilder.Entity("MealPlanner.Api.Models.GroceryItem", b =>
@@ -347,17 +327,6 @@ namespace MealPlanner.Api.Migrations
                     b.Navigation("CreatedBy");
                 });
 
-            modelBuilder.Entity("MealPlanner.Api.Models.UserIdentity", b =>
-                {
-                    b.HasOne("MealPlanner.Api.Models.User", "User")
-                        .WithMany("Identities")
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("User");
-                });
-
             modelBuilder.Entity("MealPlanner.Api.Models.GroceryList", b =>
                 {
                     b.Navigation("Items");
@@ -371,11 +340,6 @@ namespace MealPlanner.Api.Migrations
             modelBuilder.Entity("MealPlanner.Api.Models.Recipe", b =>
                 {
                     b.Navigation("MealPlanSlots");
-                });
-
-            modelBuilder.Entity("MealPlanner.Api.Models.User", b =>
-                {
-                    b.Navigation("Identities");
                 });
 #pragma warning restore 612, 618
         }
