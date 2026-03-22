@@ -42,7 +42,6 @@ public class AppDbContext : DbContext
         {
             e.ToTable("users");
             e.HasKey(u => u.Id);
-            e.Property(u => u.Id).HasDefaultValueSql("NEWID()");
             e.Property(u => u.Email).IsRequired();
             e.HasIndex(u => u.Email).IsUnique();
             e.Property(u => u.Name).IsRequired();
@@ -52,7 +51,6 @@ public class AppDbContext : DbContext
         {
             e.ToTable("user_identities");
             e.HasKey(i => i.Id);
-            e.Property(i => i.Id).HasDefaultValueSql("NEWID()");
             e.HasIndex(i => new { i.Provider, i.ProviderUserId }).IsUnique();
             e.Property(i => i.Provider).IsRequired();
             e.Property(i => i.ProviderUserId).IsRequired();
@@ -66,7 +64,6 @@ public class AppDbContext : DbContext
         {
             e.ToTable("recipes");
             e.HasKey(r => r.Id);
-            e.Property(r => r.Id).HasDefaultValueSql("NEWID()");
             e.Property(r => r.Name).IsRequired();
             e.Property(r => r.Type).IsRequired();
             e.Property(r => r.Ingredients).HasConversion(ingredientsConverter, ingredientsComparer).HasColumnType("nvarchar(max)");
@@ -78,7 +75,6 @@ public class AppDbContext : DbContext
         {
             e.ToTable("meal_plan_weeks");
             e.HasKey(w => w.Id);
-            e.Property(w => w.Id).HasDefaultValueSql("NEWID()");
             e.HasIndex(w => w.WeekStartDate).IsUnique();
         });
 
@@ -86,7 +82,6 @@ public class AppDbContext : DbContext
         {
             e.ToTable("meal_plan_slots");
             e.HasKey(s => s.Id);
-            e.Property(s => s.Id).HasDefaultValueSql("NEWID()");
             e.HasIndex(s => new { s.MealPlanWeekId, s.DayOfWeek, s.MealType }).IsUnique();
             e.HasOne(s => s.Week).WithMany(w => w.Slots).HasForeignKey(s => s.MealPlanWeekId).OnDelete(DeleteBehavior.Cascade);
             e.HasOne(s => s.Recipe).WithMany(r => r.MealPlanSlots).HasForeignKey(s => s.RecipeId).OnDelete(DeleteBehavior.SetNull);
@@ -97,7 +92,6 @@ public class AppDbContext : DbContext
         {
             e.ToTable("grocery_lists");
             e.HasKey(l => l.Id);
-            e.Property(l => l.Id).HasDefaultValueSql("NEWID()");
             e.HasOne(l => l.CreatedBy).WithMany().HasForeignKey(l => l.CreatedByUserId).OnDelete(DeleteBehavior.SetNull);
         });
 
@@ -105,7 +99,6 @@ public class AppDbContext : DbContext
         {
             e.ToTable("grocery_items");
             e.HasKey(i => i.Id);
-            e.Property(i => i.Id).HasDefaultValueSql("NEWID()");
             e.HasOne(i => i.GroceryList).WithMany(l => l.Items).HasForeignKey(i => i.GroceryListId).OnDelete(DeleteBehavior.Cascade);
             e.HasOne(i => i.CreatedBy).WithMany().HasForeignKey(i => i.CreatedByUserId).OnDelete(DeleteBehavior.SetNull);
         });
