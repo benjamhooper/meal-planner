@@ -12,7 +12,7 @@ Installable on iPhone via Safari → Share → Add to Home Screen.
 |---|---|
 | Frontend | Next.js 14, TypeScript, Tailwind CSS |
 | Backend | ASP.NET Core (.NET 10), C# |
-| Database | PostgreSQL 16 |
+| Database | SQL Server 2022 |
 | Auth | Social login (Google / GitHub) → JWT in httpOnly cookie |
 | PWA | next-pwa, web manifest, Apple touch icons |
 
@@ -45,7 +45,7 @@ If the same email address is returned by two different providers, the app merges
 ### 1. Start the database
 
 ```bash
-docker compose up postgres -d
+docker compose up sqlserver -d
 ```
 
 ### 2. Register OAuth apps
@@ -151,7 +151,7 @@ dotnet ef migrations add <MigrationName>
 |---|---|
 | Azure Static Web Apps | Next.js frontend |
 | Azure App Service (Linux) | ASP.NET Core API |
-| Azure Database for PostgreSQL Flexible Server | Database |
+| Azure SQL Database (Serverless) | Database |
 | Azure Key Vault | Secrets (JWT secret, DB connection string, OAuth credentials) |
 
 ### GitHub Actions Secrets Required
@@ -277,7 +277,7 @@ dotnet ef migrations add <MigrationName>
 |---|---|
 | Azure Static Web Apps | Next.js frontend |
 | Azure App Service (Linux) | ASP.NET Core API |
-| Azure Database for PostgreSQL Flexible Server | Database |
+| Azure SQL Database (Serverless) | Database |
 | Azure Key Vault | Secrets (JWT secret, DB connection string) |
 
 ### GitHub Actions Secrets Required
