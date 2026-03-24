@@ -39,13 +39,12 @@ public class AuthService(AppDbContext db, IConfiguration config)
         else
         {
             // 2. Same email, different provider — link to existing account
-            user = await db.Users
-                .FirstOrDefaultAsync(u => u.Email == email)
-                ?? new User { Email = email };
+            user = await db.Users.FirstOrDefaultAsync(u => u.Email == email);
 
-            if (user.Id == Guid.Empty)
+            if (user is null)
             {
                 // 3. Brand-new user
+                user = new User { Email = email };
                 db.Users.Add(user);
             }
 
