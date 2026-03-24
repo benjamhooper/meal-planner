@@ -69,14 +69,13 @@ public class AuthController(AuthService authService, IConfiguration config) : Co
 
         var token = authService.GenerateJwt(user, normalizedProvider);
 
-        var isProduction = HttpContext.RequestServices
-            .GetRequiredService<IWebHostEnvironment>().IsProduction();
+        var isHttps = HttpContext.Request.IsHttps;
 
         Response.Cookies.Append("auth_token", token, new CookieOptions
         {
             HttpOnly = true,
-            Secure = isProduction,
-            SameSite = isProduction ? SameSiteMode.None : SameSiteMode.Lax,
+            Secure = isHttps,
+            SameSite = isHttps ? SameSiteMode.None : SameSiteMode.Lax,
             Expires = DateTimeOffset.UtcNow.AddDays(30),
             Path = "/"
         });
@@ -88,14 +87,16 @@ public class AuthController(AuthService authService, IConfiguration config) : Co
 
     private void SetAuthCookie(string token)
     {
-        var isProduction = HttpContext.RequestServices
-            .GetRequiredService<IWebHostEnvironment>().IsProduction();
+        // Use Request.IsHttps (which respects X-Forwarded-Proto from Tailscale/proxies)
+        // so the Secure flag is set only when the connection is actually HTTPS.
+        // A Secure cookie on an HTTP connection is silently dropped by the browser.
+        var isHttps = HttpContext.Request.IsHttps;
 
         Response.Cookies.Append("auth_token", token, new CookieOptions
         {
             HttpOnly = true,
-            Secure = isProduction,
-            SameSite = isProduction ? SameSiteMode.None : SameSiteMode.Lax,
+            Secure = isHttps,
+            SameSite = isHttps ? SameSiteMode.None : SameSiteMode.Lax,
             Expires = DateTimeOffset.UtcNow.AddDays(30),
             Path = "/"
         });

@@ -21,6 +21,20 @@ const withPWA = require("next-pwa")({
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  // Produces a self-contained build for Docker (node server.js)
+  output: "standalone",
+  // Proxy /api/* to the .NET API container server-side.
+  // The browser calls /api/v1/* on the same origin; Next.js forwards it
+  // internally to api:8080. Cookies and headers (including X-Forwarded-For
+  // set by Cloudflare) are transparently passed through.
+  async rewrites() {
+    return [
+      {
+        source: "/api/:path*",
+        destination: "http://api:8080/api/:path*",
+      },
+    ];
+  },
 };
 
 module.exports = withPWA(nextConfig);
