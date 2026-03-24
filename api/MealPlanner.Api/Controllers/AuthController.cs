@@ -86,6 +86,58 @@ public class AuthController(AuthService authService, IConfiguration config) : Co
         return Redirect($"{frontendUrl}/meals");
     }
 
+    private void SetAuthCookie(string token)
+    {
+        var isProduction = HttpContext.RequestServices
+            .GetRequiredService<IWebHostEnvironment>().IsProduction();
+
+        Response.Cookies.Append("auth_token", token, new CookieOptions
+        {
+            HttpOnly = true,
+            Secure = isProduction,
+            SameSite = isProduction ? SameSiteMode.None : SameSiteMode.Lax,
+            Expires = DateTimeOffset.UtcNow.AddDays(30),
+            Path = "/"
+        });
+    }
+
+    // ── Local register ───────────────────────────────────────────────────────
+
+    [HttpPost("register")]
+    public async Task<IActionResult> Register([FromBody] RegisterRequest req)
+    {
+        if (string.IsNullOrWhiteSpace(req.Name) ||
+            string.IsNullOrWhiteSpace(req.Email) ||
+            string.IsNullOrWhiteSpace(req.Password) ||
+            req.Password.Length < 8)
+            return BadRequest(new { message = "Name, email, and a password of at least 8 characters are required." });
+
+        var result = await authService.RegisterAsync(req);
+        if (result is null)
+            return Conflict(new { message = "An account with that email already exists." });
+
+        var (user, token) = result.Value;
+        SetAuthCookie(token);
+        return Ok(new AuthMeResponse(user.Id, user.Email, user.Name, user.AvatarUrl, "local"));
+    }
+
+    // ── Local login ──────────────────────────────────────────────────────────
+
+    [HttpPost("login")]
+    public async Task<IActionResult> Login([FromBody] LoginRequest req)
+    {
+        if (string.IsNullOrWhiteSpace(req.Email) || string.IsNullOrWhiteSpace(req.Password))
+            return BadRequest(new { message = "Email and password are required." });
+
+        var result = await authService.LoginAsync(req);
+        if (result is null)
+            return Unauthorized(new { message = "Invalid email or password." });
+
+        var (user, token) = result.Value;
+        SetAuthCookie(token);
+        return Ok(new AuthMeResponse(user.Id, user.Email, user.Name, user.AvatarUrl, "local"));
+    }
+
     // ── Logout ───────────────────────────────────────────────────────────────
 
     [HttpPost("logout")]

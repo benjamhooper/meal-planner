@@ -13,6 +13,8 @@ public class User
     public string Email { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
     public string? AvatarUrl { get; set; }
+    /// <summary>BCrypt hash for local (email + password) logins. Null for OAuth-only users.</summary>
+    public string? PasswordHash { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 

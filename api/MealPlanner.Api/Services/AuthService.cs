@@ -4,6 +4,7 @@ using System.Text;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using MealPlanner.Api.Data;
+using MealPlanner.Api.DTOs;
 using MealPlanner.Api.Models;
 
 namespace MealPlanner.Api.Services;
@@ -97,5 +98,46 @@ public class AuthService(AppDbContext db, IConfiguration config)
         var nameIdentifier = principal.FindFirstValue("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier")
             ?? throw new InvalidOperationException("NameIdentifier claim missing");
         return Guid.Parse(nameIdentifier);
+    }
+
+    /// <summary>
+    /// Creates a new local (email + password) account. Returns null if the email is already taken.
+    /// </summary>
+    public async Task<(User user, string jwt)?> RegisterAsync(RegisterRequest req)
+    {
+        var email = req.Email.Trim().ToLowerInvariant();
+
+        if (await db.Users.AnyAsync(u => u.Email == email))
+            return null;
+
+        var user = new User
+        {
+            Email = email,
+            Name = req.Name.Trim(),
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword(req.Password)
+        };
+        db.Users.Add(user);
+        await db.SaveChangesAsync();
+
+        return (user, GenerateJwt(user, "local"));
+    }
+
+    /// <summary>
+    /// Validates email + password and returns the user and JWT. Returns null on any failure
+    /// (wrong email, no local account, or wrong password) — intentionally gives no detail to
+    /// prevent email enumeration.
+    /// </summary>
+    public async Task<(User user, string jwt)?> LoginAsync(LoginRequest req)
+    {
+        var email = req.Email.Trim().ToLowerInvariant();
+
+        var user = await db.Users.FirstOrDefaultAsync(u => u.Email == email);
+        if (user?.PasswordHash is null)
+            return null;
+
+        if (!BCrypt.Net.BCrypt.Verify(req.Password, user.PasswordHash))
+            return null;
+
+        return (user, GenerateJwt(user, "local"));
     }
 }
