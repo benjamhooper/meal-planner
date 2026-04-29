@@ -283,22 +283,22 @@ resource apiApp 'Microsoft.App/containerApps@2024-03-01' = {
         // These secrets are pulled from Key Vault using the managed identity — no stored credentials
         {
           name: 'db-connection-string'
-          keyVaultUrl: kvDbConn.properties.secretUriWithoutVersion
+          keyVaultUrl: kvDbConn.properties.secretUri
           identity: apiIdentity.id
         }
         {
           name: 'jwt-secret'
-          keyVaultUrl: kvJwt.properties.secretUriWithoutVersion
+          keyVaultUrl: kvJwt.properties.secretUri
           identity: apiIdentity.id
         }
         {
           name: 'google-client-secret'
-          keyVaultUrl: kvGoogleSecret.properties.secretUriWithoutVersion
+          keyVaultUrl: kvGoogleSecret.properties.secretUri
           identity: apiIdentity.id
         }
         {
           name: 'github-client-secret'
-          keyVaultUrl: kvGithubSecret.properties.secretUriWithoutVersion
+          keyVaultUrl: kvGithubSecret.properties.secretUri
           identity: apiIdentity.id
         }
       ]
