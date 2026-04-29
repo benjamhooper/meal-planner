@@ -115,16 +115,16 @@ resource keyVault 'Microsoft.KeyVault/vaults@2023-07-01' = {
 }
 
 // Grant the API managed identity the built-in "Key Vault Secrets User" role
-var kvSecretsUserRoleId = '4633458b-17de-408a-b874-0445c86b69e4'
-resource kvRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  scope: keyVault
-  name: guid(keyVault.id, apiIdentity.id, kvSecretsUserRoleId)
-  properties: {
-    roleDefinitionId: '/subscriptions/${subscription().subscriptionId}/providers/Microsoft.Authorization/roleDefinitions/${kvSecretsUserRoleId}'
-    principalId: apiIdentity.properties.principalId
-    principalType: 'ServicePrincipal'
-  }
-}
+// var kvSecretsUserRoleId = '4633458b-17de-408a-b874-0445c86b69e4'
+// resource kvRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+//   scope: keyVault
+//   name: guid(keyVault.id, apiIdentity.id, kvSecretsUserRoleId)
+//   properties: {
+//     roleDefinitionId: '/subscriptions/${subscription().subscriptionId}/providers/Microsoft.Authorization/roleDefinitions/${kvSecretsUserRoleId}'
+//     principalId: apiIdentity.properties.principalId
+//     principalType: 'ServicePrincipal'
+//   }
+// }
 
 // ── Azure SQL Server + Serverless Database ────────────────────────────────────
 
@@ -335,7 +335,7 @@ resource apiApp 'Microsoft.App/containerApps@2024-03-01' = {
       }
     }
   }
-  dependsOn: [kvRoleAssignment]
+  // dependsOn: [kvRoleAssignment]
 }
 
 // ── Outputs ───────────────────────────────────────────────────────────────────
