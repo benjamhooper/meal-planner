@@ -13,6 +13,9 @@ jobs:
   deploy:
     name: Provision Azure resources
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write   # needed for OIDC login to Azure
 
     steps:
       - uses: actions/checkout@v4
