@@ -1,0 +1,44 @@
+name: Deploy Infrastructure
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - "infra/**"
+      - ".github/workflows/infra.yml"
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Provision Azure resources
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to Azure
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Deploy Bicep template
+        uses: azure/arm-deploy@v2
+        with:
+          scope: resourcegroup
+          resourceGroupName: ${{ secrets.AZURE_RESOURCE_GROUP }}
+          template: ./infra/main.bicep
+          failOnStdErr: false
+          parameters: >
+            appName=meal-planner
+            sqlAdminLogin=${{ secrets.SQL_ADMIN_LOGIN }}
+            sqlAdminPassword=${{ secrets.SQL_ADMIN_PASSWORD }}
+            jwtSecret=${{ secrets.JWT_SECRET }}
+            googleClientId=${{ secrets.GOOGLE_CLIENT_ID }}
+            googleClientSecret=${{ secrets.GOOGLE_CLIENT_SECRET }}
+            githubClientId=${{ secrets.GH_CLIENT_ID }}
+            githubClientSecret=${{ secrets.GH_CLIENT_SECRET }}
+            ghcrToken=${{ secrets.GITHUB_TOKEN }}
+            ghcrUsername=${{ github.repository_owner }}

@@ -29,6 +29,12 @@ COPY . .
 # Build arg allows docker-compose to inject the correct value.
 ARG NEXT_PUBLIC_API_URL=/api/v1
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+
+# Server-side rewrite destination (next.config.js rewrites → proxy /api/* here).
+# Default: Docker Compose service name. Override for other environments.
+ARG API_INTERNAL_URL=http://api:8080
+ENV API_INTERNAL_URL=$API_INTERNAL_URL
+
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 

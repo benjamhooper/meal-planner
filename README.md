@@ -145,62 +145,169 @@ dotnet ef migrations add <MigrationName>
 
 ## Azure Deployment
 
-### Infrastructure
+### Architecture
 
-| Resource | Purpose |
+```
+Browser → Container Apps Web (Next.js, external HTTPS)
+              └── /api/* proxy → Container Apps API (.NET, internal only)
+                                      └── Azure SQL Database (Serverless)
+                                      └── Azure Key Vault (secrets via managed identity)
+```
+
+Everything runs on the **Container Apps Consumption plan** — you pay only for actual compute used, and both apps scale to zero when idle.
+
+| Resource | SKU | Estimated cost |
+|---|---|---|
+| Container Apps (web + api) | Consumption | ~$0–5/mo |
+| Azure SQL Database | Serverless GP_S_Gen5 (1 vCore, auto-pause 60 min) | ~$5–15/mo |
+| Azure Key Vault | Standard | ~$0.60/mo |
+| Log Analytics | PerGB2018 (5 GB/day free) | ~$0/mo |
+| **Total** | | **~$6–20/mo** |
+
+Container images are stored on **GitHub Container Registry (ghcr.io)** — free for packages in public and private repos.
+
+### One-time setup
+
+#### 1. Create a resource group
+
+```bash
+az group create --name meal-planner-rg --location eastus
+```
+
+#### 2. Create a service principal and configure OIDC for GitHub Actions
+
+```bash
+# Create an app registration
+az ad app create --display-name meal-planner-gh-actions
+# Note the appId in the output, then create the service principal
+az ad sp create --id <appId>
+# Grant it Contributor access on the resource group
+az role assignment create \
+  --role Contributor \
+  --assignee <appId> \
+  --scope /subscriptions/<SUBSCRIPTION_ID>/resourceGroups/meal-planner-rg
+```
+
+Then add a **federated credential** so GitHub Actions can authenticate without storing a secret:
+
+1. Azure Portal → **App registrations** → `meal-planner-gh-actions`
+2. **Certificates & secrets → Federated credentials → Add credential**
+3. Select scenario **GitHub Actions deploying Azure resources**
+4. Fill in your GitHub org/user, repo name, and set entity to **Branch: master**
+5. Save — note the **Application (client) ID** and your **Directory (tenant) ID**
+
+#### 3. Create a GitHub PAT for GHCR image pulls
+
+Go to **GitHub → Settings → Developer settings → Personal access tokens (classic)** and create a token with `read:packages` scope. This lets Container Apps pull images from ghcr.io.
+
+#### 4. Set GitHub Actions secrets
+
+| Secret | Value |
 |---|---|
-| Azure Static Web Apps | Next.js frontend |
-| Azure App Service (Linux) | ASP.NET Core API |
-| Azure SQL Database (Serverless) | Database |
-| Azure Key Vault | Secrets (JWT secret, DB connection string, OAuth credentials) |
+| `AZURE_CLIENT_ID` | Application (client) ID from step 2 |
+| `AZURE_TENANT_ID` | Directory (tenant) ID from step 2 |
+| `AZURE_SUBSCRIPTION_ID` | Your Azure subscription ID |
+| `AZURE_RESOURCE_GROUP` | `meal-planner-rg` |
+| `AZURE_API_CONTAINER_APP_NAME` | `mealplanner-api` |
+| `AZURE_WEB_CONTAINER_APP_NAME` | `mealplanner-web` |
+| `SQL_ADMIN_LOGIN` | SQL administrator username |
+| `SQL_ADMIN_PASSWORD` | Strong SQL password |
+| `JWT_SECRET` | Random secret — `openssl rand -base64 48` |
+| `GOOGLE_CLIENT_ID` | Google OAuth client ID (or leave blank) |
+| `GOOGLE_CLIENT_SECRET` | Google OAuth client secret |
+| `GH_CLIENT_ID` | GitHub OAuth client ID (or leave blank) |
+| `GH_CLIENT_SECRET` | GitHub OAuth client secret |
+| `GHCR_TOKEN` | GitHub PAT from step 3 |
 
-### GitHub Actions Secrets Required
+#### 5. Provision infrastructure
 
-| Secret | Description |
-|---|---|
-| `AZURE_API_APP_NAME` | App Service name |
-| `AZURE_API_PUBLISH_PROFILE` | App Service publish profile XML |
-| `AZURE_STATIC_WEB_APPS_API_TOKEN` | SWA deployment token |
-| `NEXT_PUBLIC_API_URL` | Full API URL for the SWA build |
+Push any change to `infra/main.bicep`, or trigger **Deploy Infrastructure** manually from the Actions tab. Bicep creates all Azure resources idempotently.
 
-### App Service Configuration
+After the first run, the workflow outputs the web app URL (e.g. `https://mealplanner-web.<hash>.eastus.azurecontainerapps.io`).
 
-Set these Application Settings on the App Service. All sensitive values should be Key Vault references.
+#### 6. Deploy the apps
 
-```
-ConnectionStrings__DefaultConnection  →  Key Vault reference
-Jwt__Secret                           →  Key Vault reference
-
-Google__ClientId                      →  Key Vault reference
-Google__ClientSecret                  →  Key Vault reference
-
-GitHub__ClientId                      →  Key Vault reference
-GitHub__ClientSecret                  →  Key Vault reference
-
-FrontendUrl                           →  https://your-swa.azurestaticapps.net
-AllowedOrigins__0                     →  https://your-swa.azurestaticapps.net
-ASPNETCORE_ENVIRONMENT                →  Production
-```
-
-Key Vault references use the format:
-```
-@Microsoft.KeyVault(SecretUri=https://VAULT.vault.azure.net/secrets/SECRET_NAME/)
-```
-
-The App Service needs a **system-assigned managed identity** with `Key Vault Secrets User` role on the vault.
+Push changes to `api/**` or `web/**` — the respective workflow builds a Docker image, pushes it to ghcr.io, and rolls out a new Container App revision.
 
 ### OAuth callback URLs for production
 
-Register these additional redirect URIs in each provider's console:
+Register these redirect URIs in each provider's console:
 
 | Provider | Callback URL |
 |---|---|
-| Google | `https://<your-api-domain>/api/v1/auth/google/callback` |
-| GitHub | `https://<your-api-domain>/api/v1/auth/github/callback` |
+| Google | `https://<web-app-fqdn>/api/v1/auth/google/callback` |
+| GitHub | `https://<web-app-fqdn>/api/v1/auth/github/callback` |
 
-### CORS Note
+> The API is not publicly exposed — all requests go through the Next.js server, which proxies `/api/*` internally to the API Container App. The OAuth callbacks are handled by the Next.js proxy as well.
 
-Production uses `SameSite=None; Secure` cookies (required for cross-origin SWA ↔ App Service requests). This is configured automatically based on `ASPNETCORE_ENVIRONMENT`.
+### How the proxy works
+
+In Docker Compose the Next.js server proxies `/api/*` to `http://api:8080` (the compose service name). In Azure Container Apps, apps within the same environment are reachable by their app name via internal DNS, so the proxy target becomes `http://mealplanner-api`. The `API_INTERNAL_URL` Docker build arg controls this — it is baked into the Next.js routes manifest at image build time.
+
+### Custom domain (optional)
+
+By default the web app is reachable at the auto-generated Container Apps FQDN. To map a subdomain (e.g. `meals.yourdomain.com`) instead:
+
+#### 1. Get the auto-generated FQDN
+
+```bash
+az containerapp show \
+  --name mealplanner-web \
+  --resource-group meal-planner-rg \
+  --query "properties.configuration.ingress.fqdn" -o tsv
+# e.g. mealplanner-web.happysand-abc123.eastus.azurecontainerapps.io
+```
+
+#### 2. Get the domain verification token
+
+```bash
+az containerapp show \
+  --name mealplanner-web \
+  --resource-group meal-planner-rg \
+  --query "properties.customDomainVerificationId" -o tsv
+```
+
+#### 3. Add DNS records in Azure DNS
+
+In your Azure DNS zone add two records for the chosen subdomain:
+
+| Type | Name | Value |
+|---|---|---|
+| CNAME | `meals` | the FQDN from step 1 |
+| TXT | `asuid.meals` | the verification token from step 2 |
+
+#### 4. Bind the custom domain and provision a managed certificate
+
+```bash
+az containerapp hostname add \
+  --name mealplanner-web \
+  --resource-group meal-planner-rg \
+  --hostname meals.yourdomain.com
+
+az containerapp hostname bind \
+  --name mealplanner-web \
+  --resource-group meal-planner-rg \
+  --hostname meals.yourdomain.com \
+  --environment mealplanner-env \
+  --validation-method CNAME
+```
+
+Azure automatically provisions and renews a free TLS certificate via Let's Encrypt. Allow a few minutes for DNS propagation before running `hostname bind`.
+
+#### 5. Update CORS and OAuth
+
+Once the domain is live, pass it to the infra workflow so the API's CORS config is updated. In `.github/workflows/infra.yml` add to the `parameters` block:
+
+```yaml
+frontendUrl=https://meals.yourdomain.com
+```
+
+Then update the redirect URIs in each OAuth provider's console:
+
+| Provider | Callback URL |
+|---|---|
+| Google | `https://meals.yourdomain.com/api/v1/auth/google/callback` |
+| GitHub | `https://meals.yourdomain.com/api/v1/auth/github/callback` |
 
 ---
 
@@ -208,28 +315,33 @@ Production uses `SameSite=None; Secure` cookies (required for cross-origin SWA �
 
 ```
 meal-planner/
-├── web/                    # Next.js PWA frontend
+├── infra/
+│   └── main.bicep              # Azure infrastructure (Container Apps, SQL, Key Vault)
+├── web/                        # Next.js PWA frontend
 │   ├── public/
-│   │   ├── icons/          # PWA + Apple touch icons (generate with scripts/generate-icons.js)
+│   │   ├── icons/              # PWA + Apple touch icons
 │   │   └── manifest.json
 │   ├── scripts/
 │   │   └── generate-icons.js
 │   └── src/
-│       ├── app/            # App Router pages
-│       ├── components/     # UI, layout, feature components
-│       ├── hooks/          # React Query hooks
-│       ├── lib/            # API client
-│       └── types/          # Shared TypeScript interfaces
+│       ├── app/                # App Router pages
+│       ├── components/         # UI, layout, feature components
+│       ├── hooks/              # React Query hooks
+│       ├── lib/                # API client
+│       └── types/              # Shared TypeScript interfaces
 ├── api/
-│   └── MealPlanner.Api/    # ASP.NET Core Web API
+│   └── MealPlanner.Api/        # ASP.NET Core Web API
 │       ├── Controllers/
-│       ├── Data/           # EF Core context + migrations
+│       ├── Data/               # EF Core context + migrations
 │       ├── DTOs/
 │       ├── Models/
 │       ├── Services/
 │       └── Program.cs
-├── .github/workflows/      # CI/CD (GitHub Actions)
-├── docker-compose.yml      # Local Postgres
+├── .github/workflows/          # CI/CD (GitHub Actions)
+│   ├── infra.yml               # Provision Azure resources (Bicep)
+│   ├── deploy-api.yml          # Build + push API image, update Container App
+│   └── deploy-web.yml          # Build + push web image, update Container App
+├── docker-compose.yml          # Local dev (SQL Server + API + web)
 ├── .env.example
 └── README.md
 ```
@@ -265,80 +377,4 @@ To add a new migration manually:
 ```bash
 cd api/MealPlanner.Api
 dotnet ef migrations add <MigrationName>
-```
-
----
-
-## Azure Deployment
-
-### Infrastructure
-
-| Resource | Purpose |
-|---|---|
-| Azure Static Web Apps | Next.js frontend |
-| Azure App Service (Linux) | ASP.NET Core API |
-| Azure SQL Database (Serverless) | Database |
-| Azure Key Vault | Secrets (JWT secret, DB connection string) |
-
-### GitHub Actions Secrets Required
-
-| Secret | Description |
-|---|---|
-| `AZURE_API_APP_NAME` | App Service name |
-| `AZURE_API_PUBLISH_PROFILE` | App Service publish profile XML |
-| `AZURE_STATIC_WEB_APPS_API_TOKEN` | SWA deployment token |
-| `NEXT_PUBLIC_API_URL` | Full API URL for the SWA build |
-
-### App Service Configuration
-
-Set these Application Settings on the App Service (they override `appsettings.json`):
-
-```
-ConnectionStrings__DefaultConnection  →  Key Vault reference
-Jwt__Secret                           →  Key Vault reference
-AllowedOrigins__0                     →  https://your-swa.azurestaticapps.net
-ASPNETCORE_ENVIRONMENT                →  Production
-```
-
-Key Vault references use the format:
-```
-@Microsoft.KeyVault(SecretUri=https://VAULT.vault.azure.net/secrets/SECRET_NAME/)
-```
-
-The App Service needs a **system-assigned managed identity** with `Key Vault Secrets User` role on the vault.
-
-### CORS Note
-
-Production uses `SameSite=None; Secure` cookies (required for cross-origin SWA ↔ App Service requests). This is configured automatically based on `ASPNETCORE_ENVIRONMENT`.
-
----
-
-## Project Structure
-
-```
-meal-planner/
-├── web/                    # Next.js PWA frontend
-│   ├── public/
-│   │   ├── icons/          # PWA + Apple touch icons (generate with scripts/generate-icons.js)
-│   │   └── manifest.json
-│   ├── scripts/
-│   │   └── generate-icons.js
-│   └── src/
-│       ├── app/            # App Router pages
-│       ├── components/     # UI, layout, feature components
-│       ├── hooks/          # React Query hooks
-│       ├── lib/            # API client
-│       └── types/          # Shared TypeScript interfaces
-├── api/
-│   └── MealPlanner.Api/    # ASP.NET Core Web API
-│       ├── Controllers/
-│       ├── Data/           # EF Core context + migrations
-│       ├── DTOs/
-│       ├── Models/
-│       ├── Services/
-│       └── Program.cs
-├── .github/workflows/      # CI/CD (GitHub Actions)
-├── docker-compose.yml      # Local Postgres
-├── .env.example
-└── README.md
 ```

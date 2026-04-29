@@ -39,8 +39,8 @@ services:
       - Jwt__Secret=${JWT_SECRET}
       - Google__ClientId=${GOOGLE_CLIENT_ID}
       - Google__ClientSecret=${GOOGLE_CLIENT_SECRET}
-      - GitHub__ClientId=${GITHUB_CLIENT_ID}
-      - GitHub__ClientSecret=${GITHUB_CLIENT_SECRET}
+      - GitHub__ClientId=${GH_CLIENT_ID}
+      - GitHub__ClientSecret=${GH_CLIENT_SECRET}
       - FrontendUrl=http://${DOMAIN}
       - AllowedOrigins__0=http://${DOMAIN}
       - AllowedOrigins__1=http://${LAN_IP}:3000
