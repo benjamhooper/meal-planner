@@ -335,7 +335,7 @@ resource apiApp 'Microsoft.App/containerApps@2024-03-01' = {
       }
     }
   }
-  dependsOn: [kvRoleAssignment, kvDbConn, kvJwt, kvGoogleSecret, kvGithubSecret]
+  dependsOn: [kvRoleAssignment]
 }
 
 // ── Outputs ───────────────────────────────────────────────────────────────────
