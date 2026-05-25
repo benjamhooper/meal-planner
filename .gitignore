@@ -41,3 +41,9 @@ npm-debug.log*
 
 # EF migrations — keep these in source control
 # (do NOT add Migrations/ here)
+
+# Terraform — state contains secrets, never commit
+**/.terraform/
+*.tfstate
+*.tfstate.backup
+*.tfvars

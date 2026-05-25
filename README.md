@@ -151,20 +151,30 @@ dotnet ef migrations add <MigrationName>
 Browser → Container Apps Web (Next.js, external HTTPS)
               └── /api/* proxy → Container Apps API (.NET, internal only)
                                       └── Azure SQL Database (Serverless)
-                                      └── Azure Key Vault (secrets via managed identity)
 ```
 
-Everything runs on the **Container Apps Consumption plan** — you pay only for actual compute used, and both apps scale to zero when idle.
+Everything runs on the **Container Apps Consumption plan** — you pay only for actual compute used, and both apps scale to zero when idle. Secrets are stored directly in Container Apps (encrypted at rest by Azure).
 
 | Resource | SKU | Estimated cost |
 |---|---|---|
 | Container Apps (web + api) | Consumption | ~$0–5/mo |
 | Azure SQL Database | Serverless GP_S_Gen5 (1 vCore, auto-pause 60 min) | ~$5–15/mo |
-| Azure Key Vault | Standard | ~$0.60/mo |
 | Log Analytics | PerGB2018 (5 GB/day free) | ~$0/mo |
 | **Total** | | **~$6–20/mo** |
 
 Container images are stored on **GitHub Container Registry (ghcr.io)** — free for packages in public and private repos.
+
+Infrastructure is defined in Terraform (`infra/terraform/`) and applied locally from your machine. GitHub Actions validates the Terraform on every push but does not apply — you run `terraform apply` yourself.
+
+---
+
+### Prerequisites
+
+- [Azure CLI](https://learn.microsoft.com/en-us/cli/azure/install-azure-cli) installed and logged in (`az login`)
+- [Terraform](https://developer.hashicorp.com/terraform/install) 1.7+
+- A GitHub repo with Actions enabled
+
+---
 
 ### One-time setup
 
@@ -179,9 +189,11 @@ az group create --name meal-planner-rg --location eastus
 ```bash
 # Create an app registration
 az ad app create --display-name meal-planner-gh-actions
+
 # Note the appId in the output, then create the service principal
 az ad sp create --id <appId>
-# Grant it Contributor access on the resource group
+
+# Grant Contributor on the app resource group
 az role assignment create \
   --role Contributor \
   --assignee <appId> \
@@ -200,83 +212,92 @@ Then add a **federated credential** so GitHub Actions can authenticate without s
 
 Go to **GitHub → Settings → Developer settings → Personal access tokens (classic)** and create a token with `read:packages` scope. This lets Container Apps pull images from ghcr.io.
 
-#### 4. Set GitHub Actions secrets
+#### 4. Provision infrastructure locally
 
-| Secret | Value |
-|---|---|
-| `AZURE_CLIENT_ID` | Application (client) ID from step 2 |
-| `AZURE_TENANT_ID` | Directory (tenant) ID from step 2 |
-| `AZURE_SUBSCRIPTION_ID` | Your Azure subscription ID |
-| `AZURE_RESOURCE_GROUP` | `meal-planner-rg` |
-| `AZURE_API_CONTAINER_APP_NAME` | `mealplanner-api` |
-| `AZURE_WEB_CONTAINER_APP_NAME` | `mealplanner-web` |
-| `SQL_ADMIN_LOGIN` | SQL administrator username |
-| `SQL_ADMIN_PASSWORD` | Strong SQL password |
-| `JWT_SECRET` | Random secret — `openssl rand -base64 48` |
-| `GOOGLE_CLIENT_ID` | Google OAuth client ID (or leave blank) |
-| `GOOGLE_CLIENT_SECRET` | Google OAuth client secret |
-| `GH_CLIENT_ID` | GitHub OAuth client ID (or leave blank) |
-| `GH_CLIENT_SECRET` | GitHub OAuth client secret |
-| `GHCR_TOKEN` | GitHub PAT from step 3 |
+Make sure you are logged in to Azure CLI (`az login`), then run from `infra/terraform/`:
 
-#### 5. Provision infrastructure
+```bash
+cd infra/terraform
 
-Push any change to `infra/main.bicep`, or trigger **Deploy Infrastructure** manually from the Actions tab. Bicep creates all Azure resources idempotently.
+terraform init
 
-After the first run, the workflow outputs the web app URL (e.g. `https://mealplanner-web.<hash>.eastus.azurecontainerapps.io`).
+terraform apply \
+  -var="resource_group_name=meal-planner-rg" \
+  -var="sql_admin_login=<your-sql-login>" \
+  -var="sql_admin_password=<your-sql-password>" \
+  -var="jwt_secret=$(openssl rand -base64 48)" \
+  -var="google_client_id=<your-google-client-id>" \
+  -var="google_client_secret=<your-google-client-secret>" \
+  -var="github_client_id=<your-github-client-id>" \
+  -var="github_client_secret=<your-github-client-secret>" \
+  -var="ghcr_username=<your-github-username>" \
+  -var="ghcr_token=<your-ghcr-pat>"
+```
+
+On the first run Terraform creates all Azure resources. Subsequent runs are idempotent.
+
+After apply completes, note the web app URL from the output:
+
+```
+web_url = "https://mealplanner-web.<hash>.eastus.azurecontainerapps.io"
+```
+
+> Terraform state is stored locally in `infra/terraform/terraform.tfstate`. Do not commit this file — it contains secret values.
+
+#### 5. Register OAuth callback URLs
+
+Using the web app URL from step 4, update each OAuth provider:
+
+**Google** — [Google Cloud Console → Credentials](https://console.cloud.google.com/apis/credentials) → edit your OAuth client → add to **Authorised redirect URIs**:
+```
+https://<web-app-fqdn>/api/v1/auth/google/callback
+```
+
+**GitHub** — [GitHub → Settings → Developer settings → OAuth Apps](https://github.com/settings/developers) → edit your app → set **Authorization callback URL**:
+```
+https://<web-app-fqdn>/api/v1/auth/github/callback
+```
 
 #### 6. Deploy the apps
 
 Push changes to `api/**` or `web/**` — the respective workflow builds a Docker image, pushes it to ghcr.io, and rolls out a new Container App revision.
 
-### OAuth callback URLs for production
-
-Register these redirect URIs in each provider's console:
-
-| Provider | Callback URL |
-|---|---|
-| Google | `https://<web-app-fqdn>/api/v1/auth/google/callback` |
-| GitHub | `https://<web-app-fqdn>/api/v1/auth/github/callback` |
-
-> The API is not publicly exposed — all requests go through the Next.js server, which proxies `/api/*` internally to the API Container App. The OAuth callbacks are handled by the Next.js proxy as well.
+---
 
 ### How the proxy works
 
-In Docker Compose the Next.js server proxies `/api/*` to `http://api:8080` (the compose service name). In Azure Container Apps, apps within the same environment are reachable by their app name via internal DNS, so the proxy target becomes `http://mealplanner-api`. The `API_INTERNAL_URL` Docker build arg controls this — it is baked into the Next.js routes manifest at image build time.
+In Docker Compose the Next.js server proxies `/api/*` to `http://api:8080` (the Compose service name). In Azure Container Apps, apps within the same environment are reachable by their app name via internal DNS, so the proxy target becomes `http://mealplanner-api`. The `API_INTERNAL_URL` env var controls this — set automatically by Terraform.
+
+---
 
 ### Custom domain (optional)
 
-By default the web app is reachable at the auto-generated Container Apps FQDN. To map a subdomain (e.g. `meals.yourdomain.com`) instead:
+By default the web app is reachable at the auto-generated Container Apps FQDN. To use your own subdomain (e.g. `meals.yourdomain.com`):
 
-#### 1. Get the auto-generated FQDN
+#### 1. Get the auto-generated FQDN and verification token
 
 ```bash
 az containerapp show \
   --name mealplanner-web \
   --resource-group meal-planner-rg \
   --query "properties.configuration.ingress.fqdn" -o tsv
-# e.g. mealplanner-web.happysand-abc123.eastus.azurecontainerapps.io
-```
 
-#### 2. Get the domain verification token
-
-```bash
 az containerapp show \
   --name mealplanner-web \
   --resource-group meal-planner-rg \
   --query "properties.customDomainVerificationId" -o tsv
 ```
 
-#### 3. Add DNS records in Azure DNS
+#### 2. Add DNS records
 
-In your Azure DNS zone add two records for the chosen subdomain:
+In your DNS provider add two records for the subdomain:
 
 | Type | Name | Value |
 |---|---|---|
-| CNAME | `meals` | the FQDN from step 1 |
-| TXT | `asuid.meals` | the verification token from step 2 |
+| CNAME | `meals` | FQDN from above |
+| TXT | `asuid.meals` | verification token from above |
 
-#### 4. Bind the custom domain and provision a managed certificate
+#### 3. Bind the custom domain
 
 ```bash
 az containerapp hostname add \
@@ -294,20 +315,11 @@ az containerapp hostname bind \
 
 Azure automatically provisions and renews a free TLS certificate via Let's Encrypt. Allow a few minutes for DNS propagation before running `hostname bind`.
 
-#### 5. Update CORS and OAuth
+#### 4. Update CORS and OAuth
 
-Once the domain is live, pass it to the infra workflow so the API's CORS config is updated. In `.github/workflows/infra.yml` add to the `parameters` block:
+Set the `FRONTEND_URL` secret in GitHub Actions to `https://meals.yourdomain.com`, then re-run **Deploy Infrastructure** to apply the updated CORS config.
 
-```yaml
-frontendUrl=https://meals.yourdomain.com
-```
-
-Then update the redirect URIs in each OAuth provider's console:
-
-| Provider | Callback URL |
-|---|---|
-| Google | `https://meals.yourdomain.com/api/v1/auth/google/callback` |
-| GitHub | `https://meals.yourdomain.com/api/v1/auth/github/callback` |
+Update the redirect URIs in each OAuth provider's console to use the new domain (same paths as step 7 above).
 
 ---
 
@@ -316,7 +328,11 @@ Then update the redirect URIs in each OAuth provider's console:
 ```
 meal-planner/
 ├── infra/
-│   └── main.bicep              # Azure infrastructure (Container Apps, SQL, Key Vault)
+│   └── terraform/
+│       ├── providers.tf        # AzureRM provider + remote backend config
+│       ├── variables.tf        # All input variables
+│       ├── main.tf             # Azure resources (Container Apps, SQL, Log Analytics)
+│       └── outputs.tf          # Web URL, SQL FQDN
 ├── web/                        # Next.js PWA frontend
 │   ├── public/
 │   │   ├── icons/              # PWA + Apple touch icons
@@ -338,7 +354,7 @@ meal-planner/
 │       ├── Services/
 │       └── Program.cs
 ├── .github/workflows/          # CI/CD (GitHub Actions)
-│   ├── infra.yml               # Provision Azure resources (Bicep)
+│   ├── infra.yml               # Provision Azure resources (Terraform)
 │   ├── deploy-api.yml          # Build + push API image, update Container App
 │   └── deploy-web.yml          # Build + push web image, update Container App
 ├── docker-compose.yml          # Local dev (SQL Server + API + web)
