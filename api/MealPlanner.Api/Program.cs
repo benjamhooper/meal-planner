@@ -113,6 +113,14 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
+app.UseForwardedHeaders(new ForwardedHeadersOptions
+{
+    ForwardedHeaders = Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedFor
+                     | Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedProto
+                     | Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedHost,
+    KnownIPNetworks = { },
+    KnownProxies = { },
+});
 app.UseCors();
 app.UseAuthentication();
 app.UseAuthorization();
