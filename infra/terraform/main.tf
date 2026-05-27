@@ -48,6 +48,7 @@ resource "azurerm_mssql_database" "db" {
   sku_name                    = "Basic"
   auto_pause_delay_in_minutes = 0
   min_capacity                = 0
+  storage_account_type        = "Local"
 }
 
 # Allow Azure-internal traffic so Container Apps can reach SQL
@@ -108,6 +109,12 @@ resource "azurerm_container_app" "web" {
         value = "http://${local.api_app_name}"
       }
     }
+  }
+
+  lifecycle {
+    ignore_changes = [
+      template[0].container[0].image,
+    ]
   }
 }
 
@@ -223,4 +230,9 @@ resource "azurerm_container_app" "api" {
     }
   }
 
+  lifecycle {
+    ignore_changes = [
+      template[0].container[0].image,
+    ]
+  }
 }

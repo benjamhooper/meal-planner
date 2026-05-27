@@ -1,0 +1,11 @@
+resource_group_name  = "meal-planner"
+sql_admin_login      = ""
+sql_admin_password   = ""
+jwt_secret           = ""   # generate with: openssl rand -base64 48
+google_client_id     = ""
+google_client_secret = ""
+github_client_id     = ""
+github_client_secret = ""
+ghcr_token           = ""   # GitHub PAT with read:packages scope
+ghcr_username        = ""
+frontend_url         = ""   # e.g. https://meals.yourdomain.com (leave empty to use auto-generated FQDN)

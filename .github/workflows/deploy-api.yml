@@ -46,9 +46,16 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Update Container App image
+      - name: Update Container App image and env vars
         run: |
           az containerapp update \
             --name ${{ secrets.AZURE_API_CONTAINER_APP_NAME }} \
             --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
-            --image ${{ env.IMAGE }}:${{ github.sha }}
+            --image ${{ env.IMAGE }}:${{ github.sha }} \
+            --set-env-vars \
+              ASPNETCORE_ENVIRONMENT=Production \
+              ASPNETCORE_FORWARDEDHEADERS_ENABLED=true \
+              "GitHub__ClientId=${{ secrets.TF_GITHUB_CLIENT_ID }}" \
+              "Google__ClientId=${{ secrets.TF_GOOGLE_CLIENT_ID }}" \
+              "FrontendUrl=${{ secrets.TF_FRONTEND_URL }}" \
+              "AllowedOrigins__0=${{ secrets.TF_FRONTEND_URL }}"

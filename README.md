@@ -164,7 +164,7 @@ Everything runs on the **Container Apps Consumption plan** — you pay only for 
 
 Container images are stored on **GitHub Container Registry (ghcr.io)** — free for packages in public and private repos.
 
-Infrastructure is defined in Terraform (`infra/terraform/`) and applied locally from your machine. GitHub Actions validates the Terraform on every push but does not apply — you run `terraform apply` yourself.
+Infrastructure is defined in Terraform (`infra/terraform/`) and applied locally from your machine. GitHub Actions deploys the API and web containers on every push — it does not run Terraform.
 
 ---
 
@@ -208,11 +208,29 @@ Then add a **federated credential** so GitHub Actions can authenticate without s
 4. Fill in your GitHub org/user, repo name, and set entity to **Branch: master**
 5. Save — note the **Application (client) ID** and your **Directory (tenant) ID**
 
-#### 3. Create a GitHub PAT for GHCR image pulls
+#### 3. Add GitHub Actions secrets
+
+In your GitHub repo go to **Settings → Secrets and variables → Actions** and add:
+
+| Secret | Description |
+|---|---|
+| `AZURE_CLIENT_ID` | Application (client) ID from the app registration above |
+| `AZURE_TENANT_ID` | Directory (tenant) ID |
+| `AZURE_SUBSCRIPTION_ID` | Azure subscription ID |
+| `AZURE_RESOURCE_GROUP` | Resource group name (`meal-planner`) |
+| `AZURE_API_CONTAINER_APP_NAME` | API container app name (`mealplanner-api`) |
+| `AZURE_WEB_CONTAINER_APP_NAME` | Web container app name (`mealplanner-web`) |
+| `TF_GITHUB_CLIENT_ID` | GitHub OAuth app client ID |
+| `TF_GOOGLE_CLIENT_ID` | Google OAuth app client ID |
+| `TF_FRONTEND_URL` | Public frontend URL (e.g. `https://meals.benhooper.org`) |
+
+> Sensitive values (OAuth secrets, JWT secret, DB password, GHCR token) are set once via `terraform apply` and stored as Azure Container App secrets. They are not passed through CI.
+
+#### 5. Create a GitHub PAT for GHCR image pulls
 
 Go to **GitHub → Settings → Developer settings → Personal access tokens (classic)** and create a token with `read:packages` scope. This lets Container Apps pull images from ghcr.io.
 
-#### 4. Provision infrastructure locally
+#### 6. Provision infrastructure locally
 
 Make sure you are logged in to Azure CLI (`az login`), then run from `infra/terraform/`:
 
@@ -220,18 +238,13 @@ Make sure you are logged in to Azure CLI (`az login`), then run from `infra/terr
 cd infra/terraform
 
 terraform init
+terraform apply
+```
 
-terraform apply \
-  -var="resource_group_name=meal-planner-rg" \
-  -var="sql_admin_login=<your-sql-login>" \
-  -var="sql_admin_password=<your-sql-password>" \
-  -var="jwt_secret=$(openssl rand -base64 48)" \
-  -var="google_client_id=<your-google-client-id>" \
-  -var="google_client_secret=<your-google-client-secret>" \
-  -var="github_client_id=<your-github-client-id>" \
-  -var="github_client_secret=<your-github-client-secret>" \
-  -var="ghcr_username=<your-github-username>" \
-  -var="ghcr_token=<your-ghcr-pat>"
+Variables are loaded automatically from `terraform.tfvars` (gitignored). Copy `terraform.tfvars.example` and fill in your values:
+
+```bash
+cp terraform.tfvars.example terraform.tfvars
 ```
 
 On the first run Terraform creates all Azure resources. Subsequent runs are idempotent.
@@ -244,7 +257,7 @@ web_url = "https://mealplanner-web.<hash>.eastus.azurecontainerapps.io"
 
 > Terraform state is stored locally in `infra/terraform/terraform.tfstate`. Do not commit this file — it contains secret values.
 
-#### 5. Register OAuth callback URLs
+#### 7. Register OAuth callback URLs
 
 Using the web app URL from step 4, update each OAuth provider:
 
@@ -258,7 +271,7 @@ https://<web-app-fqdn>/api/v1/auth/google/callback
 https://<web-app-fqdn>/api/v1/auth/github/callback
 ```
 
-#### 6. Deploy the apps
+#### 8. Deploy the apps
 
 Push changes to `api/**` or `web/**` — the respective workflow builds a Docker image, pushes it to ghcr.io, and rolls out a new Container App revision.
 
