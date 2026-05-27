@@ -219,6 +219,11 @@ resource "azurerm_container_app" "api" {
       }
 
       env {
+        name  = "PublicUrl"
+        value = local.frontend_url
+      }
+
+      env {
         name  = "FrontendUrl"
         value = local.frontend_url
       }

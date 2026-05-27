@@ -113,6 +113,20 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
+// When running behind a reverse proxy (Next.js → internal API), force the
+// scheme and host to the public URL so OAuth redirect_uri is built correctly.
+var publicUrl = app.Configuration["PublicUrl"];
+if (!string.IsNullOrEmpty(publicUrl))
+{
+    var uri = new Uri(publicUrl);
+    app.Use((ctx, next) =>
+    {
+        ctx.Request.Scheme = uri.Scheme;
+        ctx.Request.Host = new HostString(uri.Host, uri.IsDefaultPort ? -1 : uri.Port);
+        return next(ctx);
+    });
+}
+
 app.UseCors();
 app.UseAuthentication();
 app.UseAuthorization();
