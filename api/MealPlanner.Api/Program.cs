@@ -122,7 +122,7 @@ if (!string.IsNullOrEmpty(publicUrl))
     app.Use((ctx, next) =>
     {
         ctx.Request.Scheme = uri.Scheme;
-        ctx.Request.Host = new HostString(uri.Host, uri.IsDefaultPort ? -1 : uri.Port);
+        ctx.Request.Host = uri.IsDefaultPort ? new HostString(uri.Host) : new HostString(uri.Host, uri.Port);
         return next(ctx);
     });
 }
