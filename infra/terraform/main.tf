@@ -45,9 +45,9 @@ resource "azurerm_mssql_server" "sql" {
 resource "azurerm_mssql_database" "db" {
   name                        = "MealPlannerDb"
   server_id                   = azurerm_mssql_server.sql.id
-  sku_name                    = "GP_S_Gen5_1"
-  auto_pause_delay_in_minutes = 60
-  min_capacity                = 0.5
+  sku_name                    = "Basic"
+  auto_pause_delay_in_minutes = 0
+  min_capacity                = 0
 }
 
 # Allow Azure-internal traffic so Container Apps can reach SQL
@@ -174,6 +174,11 @@ resource "azurerm_container_app" "api" {
       env {
         name  = "ASPNETCORE_ENVIRONMENT"
         value = "Production"
+      }
+
+      env {
+        name  = "ASPNETCORE_FORWARDEDHEADERS_ENABLED"
+        value = "true"
       }
 
       env {
