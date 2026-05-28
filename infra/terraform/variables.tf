@@ -69,6 +69,23 @@ variable "ghcr_username" {
   type        = string
 }
 
+variable "aws_region" {
+  description = "AWS region for the Alexa Lambda."
+  type        = string
+  default     = "us-east-1"
+}
+
+variable "alexa_skill_id" {
+  description = "Alexa skill ID (amzn1.ask.skill.xxx) — required to allow the skill to invoke Lambda."
+  type        = string
+}
+
+variable "alexa_api_key" {
+  description = "Shared secret for the Alexa skill to call the today endpoint."
+  type        = string
+  sensitive   = true
+}
+
 variable "frontend_url" {
   description = "Frontend URL override for CORS. Auto-detected from web Container App FQDN when empty."
   type        = string

@@ -1,0 +1,9 @@
+{
+  "name": "meal-planner-alexa",
+  "version": "1.0.0",
+  "type": "module",
+  "dependencies": {
+    "ask-sdk-core": "^2.14.0",
+    "ask-sdk-model": "^1.29.0"
+  }
+}

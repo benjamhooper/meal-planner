@@ -12,3 +12,8 @@ output "sql_server_fqdn" {
   description = "Azure SQL Server fully qualified domain name."
   value       = azurerm_mssql_server.sql.fully_qualified_domain_name
 }
+
+output "alexa_lambda_arn" {
+  description = "ARN of the Alexa skill Lambda — paste this into the Alexa Developer Console endpoint."
+  value       = aws_lambda_function.alexa.arn
+}

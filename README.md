@@ -224,7 +224,7 @@ In your GitHub repo go to **Settings → Secrets and variables → Actions** and
 | `TF_GOOGLE_CLIENT_ID` | Google OAuth app client ID |
 | `TF_FRONTEND_URL` | Public frontend URL (e.g. `https://meals.benhooper.org`) |
 
-> Sensitive values (OAuth secrets, JWT secret, DB password, GHCR token) are set once via `terraform apply` and stored as Azure Container App secrets. They are not passed through CI.
+> Sensitive values (OAuth secrets, JWT secret, DB password, GHCR token, Alexa API key) are set once via `terraform apply` and stored as Azure Container App secrets or Lambda environment variables. They are not passed through CI.
 
 #### 5. Create a GitHub PAT for GHCR image pulls
 
@@ -370,10 +370,65 @@ meal-planner/
 │   ├── infra.yml               # Provision Azure resources (Terraform)
 │   ├── deploy-api.yml          # Build + push API image, update Container App
 │   └── deploy-web.yml          # Build + push web image, update Container App
+├── alexa/                      # Alexa skill Lambda
+│   ├── index.mjs
+│   ├── package.json
+│   └── skill-interaction-model.json
 ├── docker-compose.yml          # Local dev (SQL Server + API + web)
 ├── .env.example
 └── README.md
 ```
+
+---
+
+## Alexa Skill
+
+Say **"Alexa, open meal planner"** to hear today's breakfast, lunch, and dinner.
+
+### Setup
+
+#### 1. Build the Lambda zip
+
+```powershell
+Set-Location alexa; npm install; Compress-Archive -Path * -DestinationPath ..\alexa.zip -Force; Set-Location ..
+```
+
+This must be done before `terraform apply` — Terraform uploads the zip to Lambda.
+
+#### 2. Create the Alexa skill (console only)
+
+The Lambda and IAM role are managed by Terraform, but the skill itself must be created in the Alexa Developer Console first to get the skill ID:
+
+1. Go to [Alexa Developer Console](https://developer.amazon.com/alexa/console/ask) → **Create Skill**
+2. Name: **Meal Planner**, type: **Custom**, hosting: **Provision your own**
+3. In **Interaction Model → JSON Editor**, paste the contents of `alexa/skill-interaction-model.json`
+4. Note the **Skill ID** (top of the page) — looks like `amzn1.ask.skill.xxx`
+
+#### 3. Provision with Terraform
+
+Add to `terraform.tfvars`:
+
+```hcl
+alexa_api_key  = ""   # generate: openssl rand -hex 32
+alexa_skill_id = ""   # amzn1.ask.skill.xxx from step 2
+```
+
+Ensure AWS credentials are configured (`aws configure` or environment variables), then:
+
+```bash
+terraform init   # picks up the new AWS provider
+terraform apply
+```
+
+Terraform will create the Lambda, IAM role, and invoke permission. The Lambda ARN is printed as an output — paste it into the Alexa skill's **Endpoint** setting.
+
+#### 4. Updating the Lambda
+
+Rebuild the zip and re-run `terraform apply` — `source_code_hash` detects the change and uploads automatically.
+
+#### 5. Test
+
+Say: *"Alexa, open meal planner"* or *"Alexa, ask meal planner what's for today"*
 
 ---
 

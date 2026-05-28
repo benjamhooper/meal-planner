@@ -15,3 +15,9 @@ public record CreateSlotRequest(
 
 public record UpdateSlotRequest(
     Guid? RecipeId, string? CustomLabel, string? Notes);
+
+public record TodaysMealsResponse(
+    string Date,
+    string? Breakfast,
+    string? Lunch,
+    string? Dinner);

@@ -11,12 +11,44 @@ namespace MealPlanner.Api.Controllers;
 [Authorize]
 [ApiController]
 [Route("api/v1/mealplan")]
-public class MealPlanController(AppDbContext db) : ControllerBase
+public class MealPlanController(AppDbContext db, IConfiguration config) : ControllerBase
 {
     static DateOnly NormalizeToMonday(DateOnly date)
     {
         var diff = ((int)date.DayOfWeek - (int)DayOfWeek.Monday + 7) % 7;
         return date.AddDays(-diff);
+    }
+
+    [AllowAnonymous]
+    [HttpGet("today")]
+    public async Task<ActionResult<TodaysMealsResponse>> GetToday(
+        [FromHeader(Name = "X-Alexa-Key")] string? apiKey)
+    {
+        var expectedKey = config["Alexa:ApiKey"];
+        if (string.IsNullOrEmpty(expectedKey) || apiKey != expectedKey)
+            return Unauthorized();
+
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var monday = NormalizeToMonday(today);
+        var dayIndex = (short)(((int)today.DayOfWeek - (int)DayOfWeek.Monday + 7) % 7);
+
+        var week = await db.MealPlanWeeks
+            .Include(w => w.Slots).ThenInclude(s => s.Recipe)
+            .FirstOrDefaultAsync(w => w.WeekStartDate == monday);
+
+        var slots = week?.Slots.Where(s => s.DayOfWeek == dayIndex).ToList() ?? [];
+
+        string? Label(string mealType)
+        {
+            var slot = slots.FirstOrDefault(s => s.MealType == mealType);
+            return slot?.Recipe?.Name ?? slot?.CustomLabel;
+        }
+
+        return Ok(new TodaysMealsResponse(
+            today.ToString("dddd, MMMM d"),
+            Label("breakfast"),
+            Label("lunch"),
+            Label("dinner")));
     }
 
     [HttpGet("week/{weekStartDate}")]

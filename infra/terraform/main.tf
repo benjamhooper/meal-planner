@@ -151,6 +151,11 @@ resource "azurerm_container_app" "api" {
     value = var.github_client_secret
   }
 
+  secret {
+    name  = "alexa-api-key"
+    value = var.alexa_api_key
+  }
+
   registry {
     server               = "ghcr.io"
     username             = var.ghcr_username
@@ -224,6 +229,11 @@ resource "azurerm_container_app" "api" {
       }
 
       env {
+        name        = "Alexa__ApiKey"
+        secret_name = "alexa-api-key"
+      }
+
+      env {
         name  = "FrontendUrl"
         value = local.frontend_url
       }
@@ -240,4 +250,49 @@ resource "azurerm_container_app" "api" {
       template[0].container[0].image,
     ]
   }
+}
+
+# ── Alexa Skill Lambda (AWS) ──────────────────────────────────────────────────
+
+resource "aws_iam_role" "alexa_lambda" {
+  name = "meal-planner-alexa-lambda"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "lambda.amazonaws.com" }
+      Action    = "sts:AssumeRole"
+    }]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "alexa_lambda_logs" {
+  role       = aws_iam_role.alexa_lambda.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+}
+
+resource "aws_lambda_function" "alexa" {
+  function_name    = "MealPlanningSkill"
+  role             = aws_iam_role.alexa_lambda.arn
+  runtime          = "nodejs22.x"
+  architectures    = ["arm64"]
+  handler          = "index.handler"
+  filename         = "${path.module}/../../alexa.zip"
+  source_code_hash = filebase64sha256("${path.module}/../../alexa.zip")
+
+  environment {
+    variables = {
+      API_URL       = "${local.frontend_url}/api/v1/mealplan/today"
+      ALEXA_API_KEY = var.alexa_api_key
+    }
+  }
+}
+
+resource "aws_lambda_permission" "alexa_invoke" {
+  statement_id       = "alexa-skill-trigger"
+  action             = "lambda:InvokeFunction"
+  function_name      = aws_lambda_function.alexa.function_name
+  principal          = "alexa-appkit.amazon.com"
+  event_source_token = var.alexa_skill_id
 }

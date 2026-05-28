@@ -1,0 +1,35 @@
+{
+  "interactionModel": {
+    "languageModel": {
+      "invocationName": "meal planner",
+      "intents": [
+        {
+          "name": "GetTodaysMealsIntent",
+          "slots": [],
+          "samples": [
+            "what's for today",
+            "what are my meals today",
+            "what's on the menu today",
+            "what am I eating today",
+            "today's meals",
+            "what's for dinner",
+            "what's for lunch",
+            "what's for breakfast"
+          ]
+        },
+        {
+          "name": "AMAZON.HelpIntent",
+          "samples": []
+        },
+        {
+          "name": "AMAZON.CancelIntent",
+          "samples": []
+        },
+        {
+          "name": "AMAZON.StopIntent",
+          "samples": []
+        }
+      ]
+    }
+  }
+}
