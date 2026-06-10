@@ -35,6 +35,7 @@ jobs:
         with:
           context: api
           push: true
+          provenance: false
           tags: |
             ${{ env.IMAGE }}:latest
             ${{ env.IMAGE }}:${{ github.sha }}
