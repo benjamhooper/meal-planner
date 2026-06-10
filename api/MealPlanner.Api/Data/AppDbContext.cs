@@ -75,7 +75,8 @@ public class AppDbContext : DbContext
         {
             e.ToTable("meal_plan_weeks");
             e.HasKey(w => w.Id);
-            e.HasIndex(w => w.WeekStartDate).IsUnique();
+            e.HasIndex(w => new { w.WeekStartDate, w.UserId }).IsUnique();
+            e.HasOne(w => w.User).WithMany().HasForeignKey(w => w.UserId).OnDelete(DeleteBehavior.SetNull);
         });
 
         modelBuilder.Entity<MealPlanSlot>(e =>

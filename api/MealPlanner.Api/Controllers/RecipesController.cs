@@ -21,7 +21,8 @@ public class RecipesController(AppDbContext db) : ControllerBase
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20)
     {
-        var query = db.Recipes.Include(r => r.CreatedBy).AsQueryable();
+        var userId = AuthService.GetCurrentUserId(User);
+        var query = db.Recipes.Include(r => r.CreatedBy).Where(r => r.CreatedByUserId == userId).AsQueryable();
         if (!string.IsNullOrWhiteSpace(type)) query = query.Where(r => r.Type == type);
         if (!string.IsNullOrWhiteSpace(search)) query = query.Where(r => r.Name.ToLower().Contains(search.ToLower()));
 
@@ -41,7 +42,8 @@ public class RecipesController(AppDbContext db) : ControllerBase
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<RecipeDetail>> GetById(Guid id)
     {
-        var r = await db.Recipes.Include(r => r.CreatedBy).FirstOrDefaultAsync(r => r.Id == id);
+        var userId = AuthService.GetCurrentUserId(User);
+        var r = await db.Recipes.Include(r => r.CreatedBy).FirstOrDefaultAsync(r => r.Id == id && r.CreatedByUserId == userId);
         if (r == null) return NotFound();
         return Ok(new RecipeDetail(r.Id, r.Name, r.Type, r.SourceUrl, r.Description,
             r.Servings, r.PrepTimeMins, r.CookTimeMins, r.Ingredients, r.Steps,
@@ -74,7 +76,8 @@ public class RecipesController(AppDbContext db) : ControllerBase
     [HttpPut("{id:guid}")]
     public async Task<ActionResult<RecipeDetail>> Update(Guid id, [FromBody] UpdateRecipeRequest req)
     {
-        var recipe = await db.Recipes.Include(r => r.CreatedBy).FirstOrDefaultAsync(r => r.Id == id);
+        var userId = AuthService.GetCurrentUserId(User);
+        var recipe = await db.Recipes.Include(r => r.CreatedBy).FirstOrDefaultAsync(r => r.Id == id && r.CreatedByUserId == userId);
         if (recipe == null) return NotFound();
         recipe.Name = req.Name; recipe.Type = req.Type; recipe.SourceUrl = req.SourceUrl;
         recipe.Description = req.Description; recipe.Servings = req.Servings;
@@ -91,7 +94,8 @@ public class RecipesController(AppDbContext db) : ControllerBase
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id)
     {
-        var recipe = await db.Recipes.FindAsync(id);
+        var userId = AuthService.GetCurrentUserId(User);
+        var recipe = await db.Recipes.FirstOrDefaultAsync(r => r.Id == id && r.CreatedByUserId == userId);
         if (recipe == null) return NotFound();
         db.Recipes.Remove(recipe);
         await db.SaveChangesAsync();

@@ -106,11 +106,6 @@ using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     await db.Database.MigrateAsync();
-    if (!await db.GroceryLists.AnyAsync())
-    {
-        db.GroceryLists.Add(new MealPlanner.Api.Models.GroceryList { Name = "Grocery List" });
-        await db.SaveChangesAsync();
-    }
 }
 
 // When running behind a reverse proxy (Next.js → internal API), force the
