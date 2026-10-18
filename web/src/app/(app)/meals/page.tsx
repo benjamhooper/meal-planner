@@ -5,11 +5,9 @@ import { PageWrapper } from "@/components/layout/PageWrapper";
 import { WeekGrid } from "@/components/meals/WeekGrid";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
-function getMondayOfWeek(date: Date): Date {
+function getSundayOfWeek(date: Date): Date {
   const d = new Date(date);
-  const day = d.getDay();
-  const diff = (day === 0 ? -6 : 1 - day);
-  d.setDate(d.getDate() + diff);
+  d.setDate(d.getDate() - d.getDay());
   d.setHours(0, 0, 0, 0);
   return d;
 }
@@ -18,28 +16,28 @@ function formatDate(date: Date): string {
   return date.toISOString().split("T")[0];
 }
 
-function formatWeekLabel(monday: Date): string {
-  const end = new Date(monday);
-  end.setDate(monday.getDate() + 6);
-  return `${monday.toLocaleDateString("en-US", { month: "short", day: "numeric" })} – ${end.toLocaleDateString("en-US", { month: "short", day: "numeric" })}`;
+function formatWeekLabel(sunday: Date): string {
+  const end = new Date(sunday);
+  end.setDate(sunday.getDate() + 6);
+  return `${sunday.toLocaleDateString("en-US", { month: "short", day: "numeric" })} – ${end.toLocaleDateString("en-US", { month: "short", day: "numeric" })}`;
 }
 
 export default function MealsPage() {
-  const [monday, setMonday] = useState(() => getMondayOfWeek(new Date()));
+  const [sunday, setSunday] = useState(() => getSundayOfWeek(new Date()));
 
   const prevWeek = () => {
-    const d = new Date(monday);
+    const d = new Date(sunday);
     d.setDate(d.getDate() - 7);
-    setMonday(d);
+    setSunday(d);
   };
 
   const nextWeek = () => {
-    const d = new Date(monday);
+    const d = new Date(sunday);
     d.setDate(d.getDate() + 7);
-    setMonday(d);
+    setSunday(d);
   };
 
-  const goToday = () => setMonday(getMondayOfWeek(new Date()));
+  const goToday = () => setSunday(getSundayOfWeek(new Date()));
 
   return (
     <>
@@ -56,12 +54,12 @@ export default function MealsPage() {
           <button onClick={prevWeek} className="p-2 rounded-full hover:bg-gray-100">
             <ChevronLeft size={20} />
           </button>
-          <span className="text-sm font-medium text-gray-700">{formatWeekLabel(monday)}</span>
+          <span className="text-sm font-medium text-gray-700">{formatWeekLabel(sunday)}</span>
           <button onClick={nextWeek} className="p-2 rounded-full hover:bg-gray-100">
             <ChevronRight size={20} />
           </button>
         </div>
-        <WeekGrid weekStartDate={formatDate(monday)} />
+        <WeekGrid weekStartDate={formatDate(sunday)} />
       </PageWrapper>
     </>
   );

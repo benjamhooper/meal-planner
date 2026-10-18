@@ -14,9 +14,9 @@ interface DayColumnProps {
 
 export function DayColumn({ day, dayIndex, weekStartDate, slots }: DayColumnProps) {
   const today = new Date();
-  const mondayDate = new Date(weekStartDate + "T00:00:00");
-  const dayDate = new Date(mondayDate);
-  dayDate.setDate(mondayDate.getDate() + dayIndex);
+  const weekStart = new Date(weekStartDate + "T00:00:00");
+  const dayDate = new Date(weekStart);
+  dayDate.setDate(weekStart.getDate() + dayIndex);
   const isToday =
     dayDate.getDate() === today.getDate() &&
     dayDate.getMonth() === today.getMonth() &&

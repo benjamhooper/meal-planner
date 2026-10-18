@@ -2,7 +2,7 @@
 import { useWeekMealPlan } from "@/hooks/useWeekMealPlan";
 import { DayColumn } from "./DayColumn";
 
-const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const MEAL_TYPES = ["breakfast", "lunch", "dinner"] as const;
 
 interface WeekGridProps {

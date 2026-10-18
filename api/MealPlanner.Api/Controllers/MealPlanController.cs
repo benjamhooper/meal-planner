@@ -13,11 +13,8 @@ namespace MealPlanner.Api.Controllers;
 [Route("api/v1/mealplan")]
 public class MealPlanController(AppDbContext db, IConfiguration config) : ControllerBase
 {
-    static DateOnly NormalizeToMonday(DateOnly date)
-    {
-        var diff = ((int)date.DayOfWeek - (int)DayOfWeek.Monday + 7) % 7;
-        return date.AddDays(-diff);
-    }
+    static DateOnly NormalizeToSunday(DateOnly date) =>
+        date.AddDays(-(int)date.DayOfWeek);
 
     [AllowAnonymous]
     [HttpGet("today")]
@@ -29,8 +26,8 @@ public class MealPlanController(AppDbContext db, IConfiguration config) : Contro
             return Unauthorized();
 
         var today = DateOnly.FromDateTime(DateTime.UtcNow);
-        var monday = NormalizeToMonday(today);
-        var dayIndex = (short)(((int)today.DayOfWeek - (int)DayOfWeek.Monday + 7) % 7);
+        var sunday = NormalizeToSunday(today);
+        var dayIndex = (short)today.DayOfWeek;
 
         Guid? alexaUserId = null;
         var alexaUserIdStr = config["Alexa:UserId"];
@@ -39,7 +36,7 @@ public class MealPlanController(AppDbContext db, IConfiguration config) : Contro
 
         var week = await db.MealPlanWeeks
             .Include(w => w.Slots).ThenInclude(s => s.Recipe)
-            .FirstOrDefaultAsync(w => w.WeekStartDate == monday && w.UserId == alexaUserId);
+            .FirstOrDefaultAsync(w => w.WeekStartDate == sunday && w.UserId == alexaUserId);
 
         var slots = week?.Slots.Where(s => s.DayOfWeek == dayIndex).ToList() ?? [];
 
@@ -60,10 +57,10 @@ public class MealPlanController(AppDbContext db, IConfiguration config) : Contro
     public async Task<ActionResult<MealPlanWeekResponse>> GetWeek(DateOnly weekStartDate)
     {
         var userId = AuthService.GetCurrentUserId(User);
-        var monday = NormalizeToMonday(weekStartDate);
+        var sunday = NormalizeToSunday(weekStartDate);
         var week = await db.MealPlanWeeks
             .Include(w => w.Slots).ThenInclude(s => s.Recipe)
-            .FirstOrDefaultAsync(w => w.WeekStartDate == monday && w.UserId == userId);
+            .FirstOrDefaultAsync(w => w.WeekStartDate == sunday && w.UserId == userId);
 
         if (week == null) return NotFound();
 
@@ -74,11 +71,11 @@ public class MealPlanController(AppDbContext db, IConfiguration config) : Contro
     public async Task<ActionResult<MealPlanSlotResponse>> CreateSlot([FromBody] CreateSlotRequest req)
     {
         var userId = AuthService.GetCurrentUserId(User);
-        var monday = NormalizeToMonday(req.WeekStartDate);
-        var week = await db.MealPlanWeeks.FirstOrDefaultAsync(w => w.WeekStartDate == monday && w.UserId == userId);
+        var sunday = NormalizeToSunday(req.WeekStartDate);
+        var week = await db.MealPlanWeeks.FirstOrDefaultAsync(w => w.WeekStartDate == sunday && w.UserId == userId);
         if (week == null)
         {
-            week = new MealPlanWeek { WeekStartDate = monday, UserId = userId };
+            week = new MealPlanWeek { WeekStartDate = sunday, UserId = userId };
             db.MealPlanWeeks.Add(week);
             await db.SaveChangesAsync();
         }
@@ -106,7 +103,7 @@ public class MealPlanController(AppDbContext db, IConfiguration config) : Contro
         db.MealPlanSlots.Add(slot);
         await db.SaveChangesAsync();
         await db.Entry(slot).Reference(s => s.Recipe).LoadAsync();
-        return CreatedAtAction(nameof(GetWeek), new { weekStartDate = monday }, MapSlot(slot));
+        return CreatedAtAction(nameof(GetWeek), new { weekStartDate = sunday }, MapSlot(slot));
     }
 
     [HttpPut("slots/{id:guid}")]
