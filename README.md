@@ -50,7 +50,9 @@ docker compose up sqlserver -d
 
 ### 2. Register OAuth apps
 
-You need credentials from at least one provider. Both are optional independently; register only the ones you want to test locally.
+The API needs a non-empty client ID and client secret for **both** providers, even if you only use one. If any of the four values is blank, every API request returns a 500.
+
+Register the providers you want to test, and use placeholder values in step 3 for the rest. A provider with placeholder values can't sign anyone in, but **Sign in with email** on the login page works without registering either one.
 
 #### Google
 
@@ -80,6 +82,8 @@ dotnet user-secrets set "GitHub:ClientId"     "<your-github-client-id>"
 dotnet user-secrets set "GitHub:ClientSecret" "<your-github-client-secret>"
 ```
 
+Set all four values, using any placeholder (such as `placeholder`) for a provider you haven't registered.
+
 These are stored outside the repo in your OS secrets store and are never committed.
 
 ### 4. Configure the frontend
@@ -106,7 +110,7 @@ npm run dev
 # App available at http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000), click a social login button, and you will be redirected back to `/meals` on success.
+Open [http://localhost:3000](http://localhost:3000), then use a provider you registered or **Sign in with email**. You will be redirected to `/meals` on success.
 
 ---
 
