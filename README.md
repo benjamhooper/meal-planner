@@ -10,7 +10,7 @@ Installable on iPhone via Safari → Share → Add to Home Screen.
 
 | Layer | Technology |
 |---|---|
-| Frontend | Next.js 14, TypeScript, Tailwind CSS |
+| Frontend | Next.js 15, TypeScript, Tailwind CSS |
 | Backend | ASP.NET Core (.NET 10), C# |
 | Database | SQL Server 2022 |
 | Auth | Social login (Google / GitHub) → JWT in httpOnly cookie |
