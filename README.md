@@ -14,7 +14,7 @@ Installable on iPhone via Safari → Share → Add to Home Screen.
 | Backend | ASP.NET Core (.NET 10), C# |
 | Database | SQL Server 2022 |
 | Auth | Social login (Google / GitHub) → JWT in httpOnly cookie |
-| PWA | next-pwa, web manifest, Apple touch icons |
+| PWA | Web manifest, Apple touch icons (no service worker, so no offline support) |
 
 ---
 
