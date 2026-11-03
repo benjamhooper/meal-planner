@@ -56,8 +56,7 @@ RUN addgroup --system --gid 1001 nodejs \
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 # Compiled static assets (.next/static)
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
-# Public directory — copied last so next-pwa build-generated files
-# (sw.js, workbox-*.js) written into public/ during `next build` are preserved
+# Public directory (web manifest and icons)
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 
 USER nextjs
