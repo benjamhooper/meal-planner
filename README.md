@@ -40,7 +40,7 @@ If the same email address is returned by two different providers, the app merges
 ### Prerequisites
 - Docker Desktop
 - .NET SDK 10+
-- Node.js 20+
+- Node.js 24+
 
 ### 1. Start the database
 

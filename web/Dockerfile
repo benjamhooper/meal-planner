@@ -1,6 +1,6 @@
 # ── Dependencies stage ────────────────────────────────────────────────────────
 # Uses debian-slim to support the `canvas` native module (devDep for icon gen).
-FROM node:20-slim AS deps
+FROM node:24-slim AS deps
 WORKDIR /app
 
 # Build tools required by `canvas` (devDependency, needed during `next build`)
@@ -19,7 +19,7 @@ COPY package.json package-lock.json* ./
 RUN npm ci
 
 # ── Build stage ───────────────────────────────────────────────────────────────
-FROM node:20-slim AS builder
+FROM node:24-slim AS builder
 WORKDIR /app
 
 COPY --from=deps /app/node_modules ./node_modules
@@ -41,7 +41,7 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build
 
 # ── Runtime stage ─────────────────────────────────────────────────────────────
-FROM node:20-slim AS runner
+FROM node:24-slim AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
