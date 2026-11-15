@@ -21,6 +21,23 @@ export function RecipePicker({ isOpen, onClose, currentSlot, onSelect }: RecipeP
   return (
     <BottomSheet isOpen={isOpen} onClose={onClose} title="Pick a meal">
       <div className="flex flex-col gap-3">
+        <div className="border-b pb-3">
+          <p className="text-xs text-gray-500 mb-2">Type a custom label</p>
+          <div className="flex gap-2">
+            <Input
+              placeholder="e.g. Takeout, Leftovers..."
+              value={customLabel}
+              onChange={(e) => setCustomLabel(e.target.value)}
+              className="flex-1"
+            />
+            <button
+              onClick={() => { if (customLabel.trim()) { onSelect(null, customLabel.trim()); setCustomLabel(""); } }}
+              className="px-3 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700"
+            >
+              Set
+            </button>
+          </div>
+        </div>
         <Input
           placeholder="Search recipes..."
           value={search}
@@ -43,23 +60,6 @@ export function RecipePicker({ isOpen, onClose, currentSlot, onSelect }: RecipeP
               {r.type === "link" && <ExternalLink size={14} className="text-gray-400" />}
             </button>
           ))}
-        </div>
-        <div className="border-t pt-3">
-          <p className="text-xs text-gray-500 mb-2">Or type a custom label</p>
-          <div className="flex gap-2">
-            <Input
-              placeholder="e.g. Takeout, Leftovers..."
-              value={customLabel}
-              onChange={(e) => setCustomLabel(e.target.value)}
-              className="flex-1"
-            />
-            <button
-              onClick={() => { if (customLabel.trim()) { onSelect(null, customLabel.trim()); setCustomLabel(""); } }}
-              className="px-3 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700"
-            >
-              Set
-            </button>
-          </div>
         </div>
       </div>
     </BottomSheet>
