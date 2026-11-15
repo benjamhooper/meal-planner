@@ -6,6 +6,8 @@ import { Input } from "@/components/ui/Input";
 import { ExternalLink } from "lucide-react";
 import type { MealPlanSlot } from "@/types";
 
+const QUICK_LABELS = ["Leftovers", "Takeout", "Eating out"];
+
 interface RecipePickerProps {
   isOpen: boolean;
   onClose: () => void;
@@ -21,6 +23,13 @@ export function RecipePicker({ isOpen, onClose, currentSlot, onSelect, pending, 
   const [search, setSearch] = useState("");
   const [customLabel, setCustomLabel] = useState(currentName);
   const { data } = useRecipes({ search: search || undefined });
+
+  const handleQuickLabel = (e: React.MouseEvent<HTMLButtonElement>) => {
+    if (pending) return;
+    const label = e.currentTarget.value;
+    setCustomLabel(label);
+    onSelect(null, label);
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -54,6 +63,23 @@ export function RecipePicker({ isOpen, onClose, currentSlot, onSelect, pending, 
         >
           {isEditing ? "Save" : "Set"}
         </button>
+      </div>
+      <div className="mt-3">
+        <p className="text-xs text-gray-500 mb-2">Quick labels</p>
+        <div className="flex flex-wrap gap-2">
+          {QUICK_LABELS.map((label) => (
+            <button
+              key={label}
+              type="button"
+              value={label}
+              onClick={handleQuickLabel}
+              aria-label={`Set meal to ${label}`}
+              className="min-h-11 rounded-full border border-green-200 bg-green-50 px-3 text-sm font-medium text-green-700 hover:bg-green-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-green-600 disabled:cursor-wait"
+            >
+              {label}
+            </button>
+          ))}
+        </div>
       </div>
     </form>
   );
