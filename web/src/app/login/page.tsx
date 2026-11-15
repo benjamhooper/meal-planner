@@ -98,7 +98,7 @@ export default function LoginPage() {
 
   if (mode === "login") {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+      <div className="min-h-[calc(100dvh-4rem)] flex items-center justify-center bg-gray-50 px-4 py-6">
         <div className="w-full max-w-sm">
           <Header subtitle="Sign in to plan meals together" />
           <div className="bg-white rounded-2xl shadow-sm border p-6">
@@ -158,7 +158,7 @@ export default function LoginPage() {
 
   if (mode === "register") {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+      <div className="min-h-[calc(100dvh-4rem)] flex items-center justify-center bg-gray-50 px-4 py-6">
         <div className="w-full max-w-sm">
           <Header subtitle="Create your account" />
           <div className="bg-white rounded-2xl shadow-sm border p-6">
@@ -233,7 +233,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+    <div className="min-h-[calc(100dvh-4rem)] flex items-center justify-center bg-gray-50 px-4 py-6">
       <div className="w-full max-w-sm">
         <Header subtitle="Sign in to plan meals together" />
 
