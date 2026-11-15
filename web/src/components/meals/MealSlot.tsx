@@ -1,6 +1,7 @@
 "use client";
 import { useRef, useState } from "react";
-import { Plus, X } from "lucide-react";
+import Link from "next/link";
+import { BookOpen, Plus, X } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
 import { useUpsertSlot, useDeleteSlot } from "@/hooks/useWeekMealPlan";
 import { RecipePicker } from "./RecipePicker";
@@ -94,6 +95,16 @@ export function MealSlot({ mealType, dayIndex, weekStartDate, slot }: MealSlotPr
           </button>
         )}
       </div>
+      {slot?.recipeId && (
+        <Link
+          href={`/recipes/${slot.recipeId}`}
+          aria-label={`View recipe for ${slot.recipeName || MEAL_LABELS[mealType].toLowerCase()}`}
+          className="ml-[5.25rem] mb-1 inline-flex min-h-11 items-center gap-1.5 rounded-lg px-2 text-sm font-medium text-green-700 hover:bg-green-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-green-600"
+        >
+          <BookOpen size={16} aria-hidden="true" />
+          View recipe
+        </Link>
+      )}
       {!showPicker && pending && <p role="status" className="px-3 pb-2 text-sm text-gray-500">{pending}</p>}
       {!showPicker && error && <p role="alert" className="px-3 pb-2 text-sm text-red-600">{error}</p>}
       {clearedSlot && !slot && !showPicker && (
