@@ -34,7 +34,7 @@ export function DayColumn({ day, dayIndex, weekStartDate, slots }: DayColumnProp
       <div className="divide-y divide-gray-100">
         {MEAL_TYPES.map((mealType) => (
           <MealSlot
-            key={mealType}
+            key={`${weekStartDate}-${mealType}`}
             mealType={mealType}
             dayIndex={dayIndex}
             weekStartDate={weekStartDate}

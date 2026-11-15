@@ -1,6 +1,7 @@
 "use client";
-import { useState } from "react";
-import { Plus, X, ChevronDown } from "lucide-react";
+import { useRef, useState } from "react";
+import { Plus, X } from "lucide-react";
+import { useToast } from "@/components/ui/Toast";
 import { useUpsertSlot, useDeleteSlot } from "@/hooks/useWeekMealPlan";
 import { RecipePicker } from "./RecipePicker";
 import type { MealPlanSlot } from "@/types";
@@ -16,24 +17,68 @@ const MEAL_LABELS: Record<string, string> = { breakfast: "Breakfast", lunch: "Lu
 
 export function MealSlot({ mealType, dayIndex, weekStartDate, slot }: MealSlotProps) {
   const [showPicker, setShowPicker] = useState(false);
+  const [pending, setPending] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [clearedSlot, setClearedSlot] = useState<MealPlanSlot | null>(null);
+  const busy = useRef(false);
+  const { showToast } = useToast();
   const upsertSlot = useUpsertSlot();
   const deleteSlot = useDeleteSlot();
 
-  const handleSelect = (recipeId: string | null, customLabel: string | null) => {
-    upsertSlot.mutate({ weekStartDate, dayOfWeek: dayIndex, mealType, recipeId: recipeId ?? undefined, customLabel: customLabel ?? undefined });
-    setShowPicker(false);
+  const run = async (message: string, failure: string, action: () => Promise<void>) => {
+    if (busy.current) return;
+    busy.current = true;
+    setPending(message);
+    setError(null);
+    try {
+      await action();
+    } catch {
+      setError(failure);
+    } finally {
+      busy.current = false;
+      setPending(null);
+    }
   };
 
-  const handleClear = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (slot) deleteSlot.mutate(slot.id);
+  const handleClear = () => {
+    if (!slot) return;
+    const previous = { ...slot };
+    void run("Clearing meal...", "Could not clear this meal. Please try again.", async () => {
+      await deleteSlot.mutateAsync(previous.id);
+      setClearedSlot(previous);
+      setShowPicker(false);
+    });
+  };
+
+  const handleSelect = (recipeId: string | null, customLabel: string | null) => {
+    if (recipeId === null && customLabel === null) {
+      handleClear();
+      return;
+    }
+    void run("Saving meal...", "Could not save this meal. Your entry is still here. Please try again.", async () => {
+      await upsertSlot.mutateAsync({ weekStartDate, dayOfWeek: dayIndex, mealType, recipeId: recipeId ?? undefined, customLabel: customLabel ?? undefined, notes: slot?.notes });
+      setClearedSlot(null);
+      setShowPicker(false);
+      showToast("Meal saved");
+    });
+  };
+
+  const handleUndo = () => {
+    if (!clearedSlot || slot) return;
+    void run("Restoring meal...", "Could not restore this meal. Try Undo again.", async () => {
+      await upsertSlot.mutateAsync({ weekStartDate, dayOfWeek: dayIndex, mealType, recipeId: clearedSlot.recipeId, customLabel: clearedSlot.customLabel, notes: clearedSlot.notes });
+      setClearedSlot(null);
+      showToast("Meal restored");
+    });
   };
 
   return (
-    <>
+    <div>
+      <div className="flex items-center">
       <button
-        onClick={() => setShowPicker(true)}
-        className="w-full flex items-center gap-2 px-3 py-2 hover:bg-gray-50 text-left group"
+        disabled={!!pending}
+        onClick={() => { setError(null); setShowPicker(true); }}
+        className="min-w-0 flex-1 flex items-center gap-2 px-3 py-2 hover:bg-gray-50 text-left group disabled:opacity-50"
       >
         <span className="text-xs text-gray-400 w-16 shrink-0">{MEAL_LABELS[mealType]}</span>
         {slot?.recipeName || slot?.customLabel ? (
@@ -41,22 +86,33 @@ export function MealSlot({ mealType, dayIndex, weekStartDate, slot }: MealSlotPr
         ) : (
           <span className="flex-1 text-sm text-gray-300 italic">Add meal</span>
         )}
-        {slot ? (
-          <button onClick={handleClear} className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-gray-200">
+        {!slot && <Plus size={16} className="text-gray-300 group-hover:text-green-500" />}
+      </button>
+        {slot && (
+          <button disabled={!!pending} aria-label={`Clear ${MEAL_LABELS[mealType].toLowerCase()}`} onClick={handleClear} className="p-3 rounded hover:bg-gray-200 disabled:opacity-50">
             <X size={14} className="text-gray-400" />
           </button>
-        ) : (
-          <Plus size={16} className="text-gray-300 group-hover:text-green-500" />
         )}
-      </button>
+      </div>
+      {!showPicker && pending && <p role="status" className="px-3 pb-2 text-sm text-gray-500">{pending}</p>}
+      {!showPicker && error && <p role="alert" className="px-3 pb-2 text-sm text-red-600">{error}</p>}
+      {clearedSlot && !slot && !showPicker && (
+        <div className="flex items-center gap-3 px-3 pb-2 text-sm">
+          <span role="status">Meal cleared.</span>
+          <button disabled={!!pending} onClick={handleUndo} className="text-green-700 font-medium underline disabled:opacity-50">Undo</button>
+          <button disabled={!!pending} aria-label="Dismiss undo" onClick={() => { setClearedSlot(null); setError(null); }} className="p-2"><X size={14} /></button>
+        </div>
+      )}
       {showPicker && (
         <RecipePicker
           isOpen
-          onClose={() => setShowPicker(false)}
+          onClose={() => { if (!busy.current) setShowPicker(false); }}
           currentSlot={slot}
           onSelect={handleSelect}
+          pending={pending}
+          error={error}
         />
       )}
-    </>
+    </div>
   );
 }

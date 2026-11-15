@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useRecipes } from "@/hooks/useRecipes";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { Input } from "@/components/ui/Input";
-import { Search, ExternalLink } from "lucide-react";
+import { ExternalLink } from "lucide-react";
 import type { MealPlanSlot } from "@/types";
 
 interface RecipePickerProps {
@@ -11,9 +11,11 @@ interface RecipePickerProps {
   onClose: () => void;
   currentSlot?: MealPlanSlot;
   onSelect: (recipeId: string | null, customLabel: string | null) => void;
+  pending?: string | null;
+  error?: string | null;
 }
 
-export function RecipePicker({ isOpen, onClose, currentSlot, onSelect }: RecipePickerProps) {
+export function RecipePicker({ isOpen, onClose, currentSlot, onSelect, pending, error }: RecipePickerProps) {
   const currentName = currentSlot?.recipeName || currentSlot?.customLabel || "";
   const isEditing = !!currentName;
   const [search, setSearch] = useState("");
@@ -22,6 +24,7 @@ export function RecipePicker({ isOpen, onClose, currentSlot, onSelect }: RecipeP
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (pending) return;
     const name = customLabel.trim();
     if (!name) return;
     // Saving an unchanged name must not turn a recipe meal into free text.
@@ -46,6 +49,7 @@ export function RecipePicker({ isOpen, onClose, currentSlot, onSelect }: RecipeP
         </div>
         <button
           type="submit"
+          disabled={!customLabel.trim()}
           className="px-3 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700"
         >
           {isEditing ? "Save" : "Set"}
@@ -56,7 +60,9 @@ export function RecipePicker({ isOpen, onClose, currentSlot, onSelect }: RecipeP
 
   return (
     <BottomSheet isOpen={isOpen} onClose={onClose} title={isEditing ? "Edit meal" : "Pick a meal"}>
-      <div className="flex flex-col gap-3">
+      {pending && <p role="status" className="mb-3 text-sm text-gray-600">{pending}</p>}
+      {error && <p role="alert" className="mb-3 text-sm text-red-600">{error}</p>}
+      <fieldset disabled={!!pending} aria-busy={!!pending} className="flex flex-col gap-3 min-w-0 disabled:opacity-60">
         {nameForm}
         <Input
           placeholder="Search recipes..."
@@ -65,6 +71,7 @@ export function RecipePicker({ isOpen, onClose, currentSlot, onSelect }: RecipeP
         />
         <div className="flex flex-col gap-1 max-h-64 overflow-y-auto">
           <button
+            disabled={!currentSlot}
             onClick={() => onSelect(null, null)}
             className="text-left px-3 py-2 text-sm text-red-500 hover:bg-red-50 rounded-lg"
           >
@@ -81,7 +88,7 @@ export function RecipePicker({ isOpen, onClose, currentSlot, onSelect }: RecipeP
             </button>
           ))}
         </div>
-      </div>
+      </fieldset>
     </BottomSheet>
   );
 }

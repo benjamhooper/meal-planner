@@ -26,7 +26,7 @@ export function useUpsertSlot() {
       recipeId?: string; customLabel?: string; notes?: string;
     }) => api.post<MealPlanSlot>("/mealplan/slots", data),
     onSuccess: (_, vars) => {
-      qc.invalidateQueries({ queryKey: ["mealplan"] });
+      return qc.invalidateQueries({ queryKey: ["mealplan"] });
     },
   });
 }
