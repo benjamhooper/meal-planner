@@ -49,12 +49,14 @@ export function MealSlot({ mealType, dayIndex, weekStartDate, slot }: MealSlotPr
           <Plus size={16} className="text-gray-300 group-hover:text-green-500" />
         )}
       </button>
-      <RecipePicker
-        isOpen={showPicker}
-        onClose={() => setShowPicker(false)}
-        currentSlot={slot}
-        onSelect={handleSelect}
-      />
+      {showPicker && (
+        <RecipePicker
+          isOpen
+          onClose={() => setShowPicker(false)}
+          currentSlot={slot}
+          onSelect={handleSelect}
+        />
+      )}
     </>
   );
 }

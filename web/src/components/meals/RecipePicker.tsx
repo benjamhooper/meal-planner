@@ -14,30 +14,50 @@ interface RecipePickerProps {
 }
 
 export function RecipePicker({ isOpen, onClose, currentSlot, onSelect }: RecipePickerProps) {
+  const currentName = currentSlot?.recipeName || currentSlot?.customLabel || "";
+  const isEditing = !!currentName;
   const [search, setSearch] = useState("");
-  const [customLabel, setCustomLabel] = useState("");
+  const [customLabel, setCustomLabel] = useState(currentName);
   const { data } = useRecipes({ search: search || undefined });
 
-  return (
-    <BottomSheet isOpen={isOpen} onClose={onClose} title="Pick a meal">
-      <div className="flex flex-col gap-3">
-        <div className="border-b pb-3">
-          <p className="text-xs text-gray-500 mb-2">Type a custom label</p>
-          <div className="flex gap-2">
-            <Input
-              placeholder="e.g. Takeout, Leftovers..."
-              value={customLabel}
-              onChange={(e) => setCustomLabel(e.target.value)}
-              className="flex-1"
-            />
-            <button
-              onClick={() => { if (customLabel.trim()) { onSelect(null, customLabel.trim()); setCustomLabel(""); } }}
-              className="px-3 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700"
-            >
-              Set
-            </button>
-          </div>
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const name = customLabel.trim();
+    if (!name) return;
+    // Saving an unchanged name must not turn a recipe meal into free text.
+    if (name === currentName) {
+      onClose();
+      return;
+    }
+    onSelect(null, name);
+  };
+
+  const nameForm = (
+    <form onSubmit={handleSubmit} className="border-b pb-3">
+      <p className="text-xs text-gray-500 mb-2">{isEditing ? "Meal name" : "Type a custom label"}</p>
+      <div className="flex gap-2">
+        <div className="flex-1">
+          <Input
+            placeholder="e.g. Takeout, Leftovers..."
+            value={customLabel}
+            onChange={(e) => setCustomLabel(e.target.value)}
+            className="w-full"
+          />
         </div>
+        <button
+          type="submit"
+          className="px-3 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700"
+        >
+          {isEditing ? "Save" : "Set"}
+        </button>
+      </div>
+    </form>
+  );
+
+  return (
+    <BottomSheet isOpen={isOpen} onClose={onClose} title={isEditing ? "Edit meal" : "Pick a meal"}>
+      <div className="flex flex-col gap-3">
+        {nameForm}
         <Input
           placeholder="Search recipes..."
           value={search}
